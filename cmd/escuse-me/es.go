@@ -73,27 +73,27 @@ func InitViper(appName string, configFilePath string) error {
 }
 
 func CreateClientFromViper() (*elasticsearch.Client, error) {
-	esAddresses := viper.GetStringSlice("es-addresses")
-	username := viper.GetString("es-username")
+	esAddresses := viper.GetStringSlice("addresses")
+	username := viper.GetString("username")
 
 	cfg := elasticsearch.Config{
 		Addresses:               esAddresses,
 		Username:                username,
-		Password:                viper.GetString("es-password"),
-		CloudID:                 viper.GetString("es-cloud-id"),
-		APIKey:                  viper.GetString("es-api-key"),
-		ServiceToken:            viper.GetString("es-service-token"),
-		CertificateFingerprint:  viper.GetString("es-certificate-fingerprint"),
-		RetryOnStatus:           viper.GetIntSlice("es-retry-on-status"),
-		DisableRetry:            viper.GetBool("es-disable-retry"),
-		MaxRetries:              viper.GetInt("es-max-retries"),
+		Password:                viper.GetString("password"),
+		CloudID:                 viper.GetString("cloud-id"),
+		APIKey:                  viper.GetString("api-key"),
+		ServiceToken:            viper.GetString("service-token"),
+		CertificateFingerprint:  viper.GetString("certificate-fingerprint"),
+		RetryOnStatus:           viper.GetIntSlice("retry-on-status"),
+		DisableRetry:            viper.GetBool("disable-retry"),
+		MaxRetries:              viper.GetInt("max-retries"),
 		RetryOnError:            nil,
 		CompressRequestBody:     false,
 		DiscoverNodesOnStart:    false,
 		DiscoverNodesInterval:   0,
-		EnableMetrics:           viper.GetBool("es-enable-metrics"),
-		EnableDebugLogger:       viper.GetBool("es-enable-debug-logger"),
-		EnableCompatibilityMode: viper.GetBool("es-enable-compatibility-mode"),
+		EnableMetrics:           viper.GetBool("enable-metrics"),
+		EnableDebugLogger:       viper.GetBool("enable-debug-logger"),
+		EnableCompatibilityMode: viper.GetBool("enable-compatibility-mode"),
 		DisableMetaHeader:       false,
 		RetryBackoff:            nil,
 		Transport:               nil,
