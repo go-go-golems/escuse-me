@@ -9,8 +9,8 @@ before:
 builds:
   - env:
       - CGO_ENABLED=0
-    main: ./cmd/XXX
-    binary: program
+    main: ./cmd/escuse-me
+    binary: escuse-me
     goos:
       - linux
 # I am not able to test windows at the time

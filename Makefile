@@ -29,8 +29,8 @@ tag-release:
 
 release:
 	git push origin ${VERSION}
-	GOPROXY=proxy.golang.org go list -m github.com/wesen/XXX@${VERSION}
+	GOPROXY=proxy.golang.org go list -m github.com/go-go-golems/escuse-me@${VERSION}
 
 bump-glazed:
-	go get github.com/wesen/glazed@main
+	go get github.com/go-go-golems/glazed@main
 	go mod tidy
