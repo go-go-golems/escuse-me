@@ -170,18 +170,6 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 	if explain, ok := parameters["explain"].(bool); ok && explain {
 		os = append(os, es.Search.WithExplain(explain))
 	}
-	//if size, ok := parameters["size"].(int); ok {
-	//	os = append(os, es.Search.WithSize(size))
-	//}
-	//if from, ok := parameters["from"].(int); ok {
-	//	os = append(os, es.Search.WithFrom(from))
-	//}
-	//if sort, ok := parameters["sort"].([]string); ok {
-	//	os = append(os, es.Search.WithSort(sort...))
-	//}
-	//if source, ok := parameters["source_fields"].([]string); ok {
-	//	os = append(os, es.Search.WithSource(source...))
-	//}
 	if index, ok := parameters["index"].(string); ok {
 		os = append(os, es.Search.WithIndex(index))
 	}
