@@ -85,7 +85,7 @@ func init() {
 			{
 				FS:      queriesFS,
 				Name:    "embed",
-				Root:    "queries/",
+				Root:    ".",
 				DocRoot: "queries/doc",
 			},
 		},
@@ -108,4 +108,6 @@ func init() {
 	rootCmd.AddCommand(queriesCmd)
 
 	rootCmd.AddCommand(infoCmd)
+
+	rootCmd.AddCommand(zygoCmd)
 }

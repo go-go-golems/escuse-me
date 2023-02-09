@@ -1,0 +1,29 @@
+_source:
+{{ .source_fields | toYaml | indentBlock 2 | trimRightSpace }}
+from: 0
+query:
+  bool:
+    filter:
+      - terms:
+          type:
+{{ .types | toYaml | indentBlock 12 | trimRightSpace }}
+{{- if .published }}
+      - term:
+          status: publish
+{{- end }}
+{{- if .purchasable }}
+      - term:
+          is_purchasable: true
+{{- end }}
+    must:
+      multi_match:
+        fields:
+{{ .query_fields | toYaml | indentBlock 12 | trimRightSpace }}
+        fuzziness: {{ .fuzziness }}
+        query: {{ .query }}
+        type: {{ .multi_match_type }}
+size: {{ .size }}
+sort:
+  - in_stock: desc
+  - _score: desc
+  - menu_order: asc
