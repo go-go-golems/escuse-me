@@ -218,7 +218,6 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 		return errors.New("Could not find hits in response")
 	}
 
-	fmt.Println(hits["total"].(map[string]interface{})["value"])
 	for _, hit := range hits["hits"].([]interface{}) {
 		source, ok := hit.(map[string]interface{})["_source"]
 		if !ok {
