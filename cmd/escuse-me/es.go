@@ -7,8 +7,6 @@ import (
 	"github.com/spf13/viper"
 	"io"
 	"log"
-	"os"
-	"strings"
 )
 
 var infoCmd = &cobra.Command{
@@ -30,46 +28,6 @@ var infoCmd = &cobra.Command{
 		}(res.Body)
 		log.Println(res)
 	},
-}
-
-// TODO(manuel, 2023-02-07) This should move to plunger
-func InitViper(appName string, configFilePath string) error {
-	viper.SetEnvPrefix(appName)
-
-	if configFilePath != "" {
-		viper.SetConfigFile(configFilePath)
-	} else {
-		viper.AddConfigPath(".")
-		viper.AddConfigPath(fmt.Sprintf("$HOME/.%s", appName))
-		viper.AddConfigPath(fmt.Sprintf("/etc/%s", appName))
-
-		xdgConfigPath, err := os.UserConfigDir()
-		if err == nil {
-			viper.AddConfigPath(fmt.Sprintf("%s/%s", xdgConfigPath, appName))
-		}
-	}
-
-	// Read the configuration file into Viper
-	err := viper.ReadInConfig()
-	// if the file does not exist, continue normally
-	if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-		// Config file not found; ignore error
-	} else if err != nil {
-		// Config file was found but another error was produced
-		return err
-	}
-	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
-
-	// Bind the variables to the command-line flags
-	err = viper.BindPFlags(rootCmd.PersistentFlags())
-	if err != nil {
-		return err
-	}
-
-	viper.AutomaticEnv()
-
-	return nil
-
 }
 
 func CreateClientFromViper() (*elasticsearch.Client, error) {
