@@ -10,6 +10,7 @@ import (
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/helpers"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 	"io"
@@ -20,15 +21,15 @@ import (
 
 type EscuseMeCommand interface {
 	cmds.CobraCommand
-	RunQueryIntoGlaze(ctx context.Context, gp *cli.GlazeProcessor) error
+	RunQueryIntoGlaze(ctx context.Context, gp *cmds.GlazeProcessor) error
 }
 
 type EscuseMeCommandDescription struct {
-	Name      string            `yaml:"name"`
-	Short     string            `yaml:"short"`
-	Long      string            `yaml:"long,omitempty"`
-	Flags     []*cmds.Parameter `yaml:"flags,omitempty"`
-	Arguments []*cmds.Parameter `yaml:"arguments,omitempty"`
+	Name      string                      `yaml:"name"`
+	Short     string                      `yaml:"short"`
+	Long      string                      `yaml:"long,omitempty"`
+	Flags     []*cmds.ParameterDefinition `yaml:"flags,omitempty"`
+	Arguments []*cmds.ParameterDefinition `yaml:"arguments,omitempty"`
 
 	QueryTemplate string `yaml:"queryTemplate,omitempty"`
 }
@@ -59,7 +60,7 @@ func NewElasticSearchCommand(description *cmds.CommandDescription, query string)
 	}
 }
 
-func (esc *ElasticSearchCommand) Run(m map[string]interface{}) error {
+func (esc *ElasticSearchCommand) Run(map[string]interface{}, *cmds.GlazeProcessor) error {
 	//TODO implement me
 	panic("implement me")
 }
@@ -152,7 +153,7 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 	ctx context.Context,
 	es *elasticsearch.Client,
 	parameters map[string]interface{},
-	gp *cli.GlazeProcessor,
+	gp *cmds.GlazeProcessor,
 ) error {
 	query, err := esc.RenderQueryToJSON(parameters)
 	if err != nil {
@@ -256,11 +257,16 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 		}
 	}
 
-	defer s.Close()
+	defer func(s fs.File) {
+		err := s.Close()
+		if err != nil {
+			log.Error().Err(err).Msg("Could not close file")
+		}
+	}(s)
 
 	escd := &EscuseMeCommandDescription{
-		Flags:     []*cmds.Parameter{},
-		Arguments: []*cmds.Parameter{},
+		Flags:     []*cmds.ParameterDefinition{},
+		Arguments: []*cmds.ParameterDefinition{},
 	}
 	err = yaml.NewDecoder(s).Decode(escd)
 	if err != nil {
@@ -317,7 +323,12 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 					if err != nil {
 						return nil, nil, err
 					}
-					defer s.Close()
+					defer func(s fs.File) {
+						err := s.Close()
+						if err != nil {
+							log.Error().Err(err).Msg("Could not close file")
+						}
+					}(s)
 
 					alias, err := escl.LoadCommandAliasFromYAML(s)
 					if err != nil {
