@@ -75,7 +75,7 @@ func (esc *ElasticSearchCommand) Description() *cmds.CommandDescription {
 func (esc *ElasticSearchCommand) RunFromCobra(cmd *cobra.Command, args []string) error {
 	description := esc.Description()
 
-	parameters, err := cmds.GatherParameters(cmd, description, args)
+	parameters, err := cmds.GatherParametersFromCobraCommand(cmd, description, args)
 
 	if err != nil {
 		return err
