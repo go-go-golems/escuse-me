@@ -6,8 +6,9 @@ require (
 	github.com/elastic/go-elasticsearch/v8 v8.6.0
 	github.com/glycerine/zygomys/v6 v6.0.5
 	github.com/go-go-golems/clay v0.0.0-20230209230840-8ae39b3e6203
-	github.com/go-go-golems/glazed v0.2.5-0.20230209230455-03ed8a509375
+	github.com/go-go-golems/glazed v0.2.6
 	github.com/pkg/errors v0.9.1
+	github.com/rs/zerolog v1.29.0
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.15.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -52,7 +53,6 @@ require (
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
-	github.com/rs/zerolog v1.29.0 // indirect
 	github.com/scylladb/termtables v0.0.0-20191203121021-c4c0b6d42ff4 // indirect
 	github.com/shurcooL/go v0.0.0-20200502201357-93f07166e636 // indirect
 	github.com/shurcooL/go-goon v0.0.0-20170922171312-37c2f522c041 // indirect

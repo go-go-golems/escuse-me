@@ -55,8 +55,11 @@ func AddQueriesCmd(allQueries []*ElasticSearchCommand, aliases []*glazed_cmds.Co
 	}
 
 	flagsDefaults := cli.NewFlagsDefaults()
-	flagsDefaults.FieldsFilter.Fields = "name,short,source"
-	cli.AddFlags(queriesCmd, flagsDefaults)
+	flagsDefaults.FieldsFilter.Fields = []string{"name", "short", "source"}
+	err := cli.AddFlags(queriesCmd, flagsDefaults)
+	if err != nil {
+		panic(err)
+	}
 
 	return queriesCmd
 }
