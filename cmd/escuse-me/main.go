@@ -14,6 +14,12 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "escuse-me",
 	Short: "GO GO GOLEM ESCUSE ME ELASTIC SEARCH GADGET",
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		// reinitialize the logger because we can now parse --log-level and co
+		// from the command line flag
+		err := clay.InitLogger()
+		cobra.CheckErr(err)
+	},
 }
 
 func main() {
