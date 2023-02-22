@@ -5,6 +5,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+type ESClientFactory func() (*elasticsearch.Client, error)
+
 func CreateClientFromViper() (*elasticsearch.Client, error) {
 	esAddresses := viper.GetStringSlice("addresses")
 	username := viper.GetString("username")

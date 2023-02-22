@@ -5,6 +5,7 @@ import (
 	"fmt"
 	clay "github.com/go-go-golems/clay/pkg"
 	"github.com/go-go-golems/escuse-me/pkg"
+	"github.com/go-go-golems/glazed/pkg/cli"
 	"github.com/go-go-golems/glazed/pkg/help"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -55,21 +56,6 @@ func init() {
 
 	helpCmd := help.NewCobraHelpCommand(helpSystem)
 	rootCmd.SetHelpCommand(helpCmd)
-	rootCmd.PersistentFlags().StringSlice("addresses", []string{"http://localhost:9200"}, "Elasticsearch addresses")
-	rootCmd.PersistentFlags().String("username", "", "Elasticsearch username")
-	rootCmd.PersistentFlags().String("password", "", "Elasticsearch password")
-	rootCmd.PersistentFlags().String("cloud-id", "", "Elasticsearch cloud ID")
-	rootCmd.PersistentFlags().String("api-key", "", "Elasticsearch API key")
-	rootCmd.PersistentFlags().String("service-token", "", "Elasticsearch service token")
-	rootCmd.PersistentFlags().String("certificate-fingerprint", "", "Elasticsearch certificate fingerprint")
-	rootCmd.PersistentFlags().IntSlice("retry-on-status", []int{502, 503, 504, 429}, "Elasticsearch retry on status")
-	rootCmd.PersistentFlags().Bool("disable-retry", false, "Elasticsearch disable retry")
-	rootCmd.PersistentFlags().Int("max-retries", 3, "Elasticsearch max retries")
-	rootCmd.PersistentFlags().Bool("enable-metrics", false, "Elasticsearch enable metrics")
-	rootCmd.PersistentFlags().Bool("enable-debug-logger", false, "Elasticsearch enable debug logger")
-	rootCmd.PersistentFlags().Bool("enable-compatibility-mode", false, "Elasticsearch enable compatibility mode")
-
-	rootCmd.PersistentFlags().String("index", "", "Elasticsearch index")
 
 	err = clay.InitViper("escuse-me", rootCmd)
 	if err != nil {
@@ -98,8 +84,11 @@ func init() {
 		Repositories: repositories,
 	}
 
+	clientFactory := pkg.CreateClientFromViper
+	loader := pkg.NewElasticSearchCommandLoader(clientFactory)
+
 	commands, aliases, err := locations.LoadCommands(
-		&pkg.ElasticSearchCommandLoader{}, helpSystem, rootCmd)
+		loader, helpSystem, rootCmd)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Error initializing commands: %s\n", err)
 		os.Exit(1)
@@ -110,8 +99,16 @@ func init() {
 		_, _ = fmt.Fprintf(os.Stderr, "Error initializing commands: %s\n", err)
 		os.Exit(1)
 	}
-	queriesCmd := pkg.AddQueriesCmd(esCommands, aliases)
-	rootCmd.AddCommand(queriesCmd)
+	queriesCommand, err := pkg.NewQueriesCommand(esCommands, aliases)
+	if err != nil {
+		panic(err)
+	}
+	cobraQueriesCommand, err := cli.BuildCobraCommand(queriesCommand)
+	if err != nil {
+		panic(err)
+	}
+
+	rootCmd.AddCommand(cobraQueriesCommand)
 
 	rootCmd.AddCommand(infoCmd)
 
