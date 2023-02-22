@@ -5,8 +5,8 @@ go 1.19
 require (
 	github.com/elastic/go-elasticsearch/v8 v8.6.0
 	github.com/glycerine/zygomys/v6 v6.0.5
-	github.com/go-go-golems/clay v0.0.0-20230209230840-8ae39b3e6203
-	github.com/go-go-golems/glazed v0.2.6
+	github.com/go-go-golems/clay v0.0.5
+	github.com/go-go-golems/glazed v0.2.12
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.29.0
 	github.com/spf13/cobra v1.6.1
