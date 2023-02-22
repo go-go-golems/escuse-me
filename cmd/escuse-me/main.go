@@ -5,6 +5,7 @@ import (
 	"fmt"
 	clay "github.com/go-go-golems/clay/pkg"
 	"github.com/go-go-golems/escuse-me/pkg"
+	"github.com/go-go-golems/glazed/pkg/cli"
 	"github.com/go-go-golems/glazed/pkg/help"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -98,8 +99,11 @@ func init() {
 		Repositories: repositories,
 	}
 
+	clientFactory := pkg.CreateClientFromViper
+	loader := pkg.NewElasticSearchCommandLoader(clientFactory)
+
 	commands, aliases, err := locations.LoadCommands(
-		&pkg.ElasticSearchCommandLoader{}, helpSystem, rootCmd)
+		loader, helpSystem, rootCmd)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Error initializing commands: %s\n", err)
 		os.Exit(1)
@@ -110,8 +114,16 @@ func init() {
 		_, _ = fmt.Fprintf(os.Stderr, "Error initializing commands: %s\n", err)
 		os.Exit(1)
 	}
-	queriesCmd := pkg.AddQueriesCmd(esCommands, aliases)
-	rootCmd.AddCommand(queriesCmd)
+	queriesCommand, err := pkg.NewQueriesCommand(esCommands, aliases)
+	if err != nil {
+		panic(err)
+	}
+	cobraQueriesCommand, err := cli.BuildCobraCommand(queriesCommand)
+	if err != nil {
+		panic(err)
+	}
+
+	rootCmd.AddCommand(cobraQueriesCommand)
 
 	rootCmd.AddCommand(infoCmd)
 

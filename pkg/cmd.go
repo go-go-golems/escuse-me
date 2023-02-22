@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
-	"github.com/go-go-golems/glazed/pkg/cli"
 	"github.com/go-go-golems/glazed/pkg/cmds"
+	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
 	"github.com/go-go-golems/glazed/pkg/helpers"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -19,95 +19,55 @@ import (
 	"strings"
 )
 
-type EscuseMeCommand interface {
-	cmds.CobraCommand
-	RunQueryIntoGlaze(ctx context.Context, gp *cmds.GlazeProcessor) error
-}
-
 type EscuseMeCommandDescription struct {
-	Name      string                      `yaml:"name"`
-	Short     string                      `yaml:"short"`
-	Long      string                      `yaml:"long,omitempty"`
-	Flags     []*cmds.ParameterDefinition `yaml:"flags,omitempty"`
-	Arguments []*cmds.ParameterDefinition `yaml:"arguments,omitempty"`
+	Name      string                            `yaml:"name"`
+	Short     string                            `yaml:"short"`
+	Long      string                            `yaml:"long,omitempty"`
+	Flags     []*parameters.ParameterDefinition `yaml:"flags,omitempty"`
+	Arguments []*parameters.ParameterDefinition `yaml:"arguments,omitempty"`
 
 	QueryTemplate string `yaml:"queryTemplate,omitempty"`
 }
 
 type ElasticSearchCommand struct {
-	description *cmds.CommandDescription
-	Query       string
+	description   *cmds.CommandDescription
+	Query         string
+	clientFactory ESClientFactory
 }
 
-func (esc *ElasticSearchCommand) BuildCobraCommand() (*cobra.Command, error) {
-	cmd, err := cmds.NewCobraCommand(esc)
-	if err != nil {
-		return nil, err
-	}
-	cmd.Flags().Bool("print-query", false, "Print the query that will be executed")
-	cmd.Flags().Bool("explain", false, "Print the query plan that will be executed")
-
-	// add glazed flags
-	cli.AddFlags(cmd, cli.NewFlagsDefaults())
-
-	return cmd, nil
-}
-
-func NewElasticSearchCommand(description *cmds.CommandDescription, query string) *ElasticSearchCommand {
+func NewElasticSearchCommand(
+	description *cmds.CommandDescription,
+	clientFactory ESClientFactory,
+	query string,
+) *ElasticSearchCommand {
 	return &ElasticSearchCommand{
-		description: description,
-		Query:       query,
+		description:   description,
+		clientFactory: clientFactory,
+		Query:         query,
 	}
 }
 
-func (esc *ElasticSearchCommand) Run(map[string]interface{}, *cmds.GlazeProcessor) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (esc *ElasticSearchCommand) Description() *cmds.CommandDescription {
-	return esc.description
-}
-
-// TODO(manuel, 2023-02-07) This is all a bit messy, why is this unused in sqleton and here,
-// it's probably because the interface doesn't work. Needs to be rethought soon.
-
-func (esc *ElasticSearchCommand) RunFromCobra(cmd *cobra.Command, args []string) error {
-	description := esc.Description()
-
-	parameters, err := cmds.GatherParametersFromCobraCommand(cmd, description, args)
-
-	if err != nil {
-		return err
-	}
-
-	es, err := CreateClientFromViper()
+func (esc *ElasticSearchCommand) Run(ctx context.Context, ps map[string]interface{}, gp *cmds.GlazeProcessor) error {
+	es, err := esc.clientFactory()
 	cobra.CheckErr(err)
-
-	dbContext := context.Background()
-	gp, of, err := cli.SetupProcessor(cmd)
-	if err != nil {
-		return errors.Wrapf(err, "Could not setup processor")
-	}
 
 	// TODO(2022-12-21, manuel): Add explain functionality
 	// See: https://github.com/wesen/sqleton/issues/45
-	explain, _ := cmd.Flags().GetBool("explain")
-	parameters["explain"] = explain
+	explain, _ := ps["explain"].(bool)
 	_ = explain
 
-	printQuery, _ := cmd.Flags().GetBool("print-query")
+	printQuery, _ := ps["print-query"].(bool)
 	if printQuery {
-		output, _ := cmd.Flags().GetString("output")
+		output, _ := ps["output"].(string)
 		if output == "json" {
-			query, err := esc.RenderQueryToJSON(parameters)
+			query, err := esc.RenderQueryToJSON(ps)
 			if err != nil {
 				return errors.Wrapf(err, "Could not generate query")
 			}
 			fmt.Println(query)
 			return nil
 		} else {
-			query, err := esc.RenderQuery(parameters)
+			query, err := esc.RenderQuery(ps)
 			if err != nil {
 				return errors.Wrapf(err, "Could not generate query")
 			}
@@ -116,18 +76,12 @@ func (esc *ElasticSearchCommand) RunFromCobra(cmd *cobra.Command, args []string)
 		}
 	}
 
-	err = esc.RunQueryIntoGlaze(dbContext, es, parameters, gp)
-	if err != nil {
-		return errors.Wrapf(err, "Could not run query")
-	}
+	err = esc.RunQueryIntoGlaze(ctx, es, ps, gp)
+	return err
+}
 
-	output, err := of.Output()
-	if err != nil {
-		return errors.Wrapf(err, "Could not get output")
-	}
-	fmt.Print(output)
-
-	return nil
+func (esc *ElasticSearchCommand) Description() *cmds.CommandDescription {
+	return esc.description
 }
 
 func (esc *ElasticSearchCommand) RenderQuery(parameters map[string]interface{}) (string, error) {
@@ -237,6 +191,13 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 //   - this data is passed to the template at evaluation file,
 //     and can be used to store things like tags and constant strings, boost values and the like
 type ElasticSearchCommandLoader struct {
+	clientFactory ESClientFactory
+}
+
+func NewElasticSearchCommandLoader(clientFactory ESClientFactory) *ElasticSearchCommandLoader {
+	return &ElasticSearchCommandLoader{
+		clientFactory: clientFactory,
+	}
 }
 
 func (escl *ElasticSearchCommandLoader) LoadCommandAliasFromYAML(s io.Reader) ([]*cmds.CommandAlias, error) {
@@ -265,13 +226,26 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 	}(s)
 
 	escd := &EscuseMeCommandDescription{
-		Flags:     []*cmds.ParameterDefinition{},
-		Arguments: []*cmds.ParameterDefinition{},
+		Flags:     []*parameters.ParameterDefinition{},
+		Arguments: []*parameters.ParameterDefinition{},
 	}
 	err = yaml.NewDecoder(s).Decode(escd)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// Add print query and explain parameters
+	escd.Flags = append(escd.Flags, &parameters.ParameterDefinition{
+		Name:     "print-query",
+		Help:     "Print the query that is generated",
+		Type:     "bool",
+		Required: false,
+	}, &parameters.ParameterDefinition{
+		Name:     "explain",
+		Help:     "Explain the query",
+		Type:     "bool",
+		Required: false,
+	})
 
 	queryTemplate := ""
 
@@ -294,7 +268,7 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 		Long:      escd.Long,
 		Flags:     escd.Flags,
 		Arguments: escd.Arguments,
-	}, queryTemplate)
+	}, escl.clientFactory, queryTemplate)
 
 	aliases := []*cmds.CommandAlias{}
 
