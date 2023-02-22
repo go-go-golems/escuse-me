@@ -34,3 +34,12 @@ release:
 bump-glazed:
 	go get github.com/go-go-golems/glazed@main
 	go mod tidy
+
+exhaustive:
+	golangci-lint run -v --enable=exhaustive
+
+ESCUSE_ME_BINARY=$(shell which escuse-me)
+
+install:
+	go build -o ./dist/escuse-me ./cmd/escuse-me && \
+		cp ./dist/escuse-me $(ESCUSE_ME_BINARY)
