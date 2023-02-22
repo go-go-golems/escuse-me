@@ -1,0 +1,59 @@
+slug: es-connection
+name: ElasticSearch connection flags
+flags:
+  - name: addresses
+    type: stringList
+    help: Addresses of the ElasticSearch nodes
+    default: ["http://localhost:9200"]
+  - name: username
+    type: string
+    help: Username to connect to ElasticSearch
+    default: ""
+  - name: password
+    type: string
+    help: Password to connect to ElasticSearch
+    default: ""
+  - name: cloud-id
+    type: string
+    help: Cloud ID to connect to ElasticSearch
+    default: ""
+  - name: api-key
+    type: string
+    help: API key to connect to ElasticSearch
+    default: ""
+  - name: service-token
+    type: string
+    help: Service token to connect to ElasticSearch
+    default: ""
+  - name: certificate-fingerprint
+    type: string
+    help: Certificate fingerprint to connect to ElasticSearch
+    default: ""
+  - name: retry-on-status
+    type: intList
+    help: Retry on status codes
+    default:
+      - 502
+      - 503
+      - 504
+      - 429
+  - name: disable-retry
+    type: bool
+    help: Disable retry
+    default: false
+  - name: max-retries
+    type: int
+    help: Max retries
+    default: 3
+  - name: enable-metrics
+    type: bool
+    help: Enable metrics
+    default: false
+  - name: enable-debug-logger
+    type: bool
+    help: Enable debug logger
+    default: false
+  - name: enable-compatibility-mode
+    type: bool
+    help: Enable compatibility mode
+    default: false

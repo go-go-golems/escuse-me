@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
+	"github.com/go-go-golems/glazed/pkg/cli"
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
 	"github.com/go-go-golems/glazed/pkg/helpers"
@@ -39,12 +40,22 @@ func NewElasticSearchCommand(
 	description *cmds.CommandDescription,
 	clientFactory ESClientFactory,
 	query string,
-) *ElasticSearchCommand {
+) (*ElasticSearchCommand, error) {
+	glazedParameterLayer, err := cli.NewGlazedParameterLayers()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create Glazed parameter layer")
+	}
+	esParameterLayer, err := NewESParameterLayer()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create SQL connection parameter layer")
+	}
+	description.Layers = append(description.Layers, glazedParameterLayer, esParameterLayer)
+
 	return &ElasticSearchCommand{
 		description:   description,
 		clientFactory: clientFactory,
 		Query:         query,
-	}
+	}, nil
 }
 
 func (esc *ElasticSearchCommand) Run(ctx context.Context, ps map[string]interface{}, gp *cmds.GlazeProcessor) error {
@@ -262,13 +273,16 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 		return nil, nil, errors.New("No query template specified")
 	}
 
-	esc := NewElasticSearchCommand(&cmds.CommandDescription{
+	esc, err := NewElasticSearchCommand(&cmds.CommandDescription{
 		Name:      escd.Name,
 		Short:     escd.Short,
 		Long:      escd.Long,
 		Flags:     escd.Flags,
 		Arguments: escd.Arguments,
 	}, escl.clientFactory, queryTemplate)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	aliases := []*cmds.CommandAlias{}
 
