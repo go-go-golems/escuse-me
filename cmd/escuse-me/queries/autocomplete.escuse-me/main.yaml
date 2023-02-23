@@ -1,0 +1,40 @@
+name: autocomplete
+short: Get autocomplete suggestions
+flags:
+  - name: source_fields
+    type: stringList
+    help: Fields to return from ES index
+  - name: from
+    type: int
+    default: 0
+    help: From which result to return
+  - name: size
+    type: int
+    default: 10
+    help: Number of results to return
+  - name: query_fields
+    type: stringList
+    default:
+      - name^5
+      - name.bigrammed^5
+      - botanical_name^3
+      - botanical_name.bigrammed^3
+      - product_brand.text^3
+      - product_brand.bigrammed^3
+      - special_features.text^2
+      - special_features.bigrammed^2
+      - style.text^2
+      - style.bigrammed^2
+      - category.text^4
+      - category.bigrammed^4
+    help: Fields to search
+  - name: index
+    type: string
+    default: local_site_search_autocomplete
+    help: ES index to search
+arguments:
+  - name: query
+    type: string
+    help: Query to search
+    required: true
+queryTemplate: query.tmpl.yaml

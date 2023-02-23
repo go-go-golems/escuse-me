@@ -1,0 +1,41 @@
+from: {{ .from }}
+query:
+  dis_max:
+    queries:
+      - function_score:
+          field_value_factor:
+            field: count
+            missing: 1
+            modifier: log1p
+          query:
+            multi_match:
+              fields:
+                - name
+              fuzziness: auto
+              query: {{ .query }}
+          score_mode: sum
+      - function_score:
+          field_value_factor:
+            factor: 4
+            field: count
+            missing: 1
+            modifier: log1p
+          query:
+            multi_match:
+              fields:
+                - name.bigrammed^5
+              fuzziness: auto
+              query: {{ .query }}
+          score_mode: sum
+      - function_score:
+          query:
+            multi_match:
+              fields:
+                - product_name
+                - product_name.bigrammed^2
+              fuzziness: auto
+              query: {{ .query }}
+          weight: 0.3
+size: {{ .size }}
+sort:
+  - _score: desc

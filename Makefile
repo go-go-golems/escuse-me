@@ -32,7 +32,8 @@ release:
 	GOPROXY=proxy.golang.org go list -m github.com/go-go-golems/escuse-me@${VERSION}
 
 bump-glazed:
-	go get github.com/go-go-golems/glazed@main
+	go get -u -t -x github.com/go-go-golems/glazed@main
+	go get -u -t -x github.com/go-go-golems/clay@main
 	go mod tidy
 
 exhaustive:

@@ -1,6 +1,6 @@
 _source:
 {{ .source_fields | toYaml | indentBlock 2 | trimRightSpace }}
-from: 0
+from: {{ .from }}
 query:
   bool:
     filter:
