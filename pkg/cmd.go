@@ -45,11 +45,7 @@ func NewElasticSearchCommand(
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create Glazed parameter layer")
 	}
-	esParameterLayer, err := NewESParameterLayer()
-	if err != nil {
-		return nil, errors.Wrap(err, "could not create SQL connection parameter layer")
-	}
-	description.Layers = append(description.Layers, glazedParameterLayer, esParameterLayer)
+	description.Layers = append(description.Layers, glazedParameterLayer)
 
 	return &ElasticSearchCommand{
 		description:   description,
@@ -76,14 +72,14 @@ func (esc *ElasticSearchCommand) Run(ctx context.Context, ps map[string]interfac
 				return errors.Wrapf(err, "Could not generate query")
 			}
 			fmt.Println(query)
-			return nil
+			return &cmds.ExitWithoutGlazeError{}
 		} else {
 			query, err := esc.RenderQuery(ps)
 			if err != nil {
 				return errors.Wrapf(err, "Could not generate query")
 			}
 			fmt.Println(query)
-			return nil
+			return &cmds.ExitWithoutGlazeError{}
 		}
 	}
 
@@ -173,7 +169,8 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 	}
 
 	for _, hit := range hits["hits"].([]interface{}) {
-		source, ok := hit.(map[string]interface{})["_source"]
+		hit_ := hit.(map[string]interface{})
+		source, ok := hit_["_source"]
 		if !ok {
 			return errors.New("Could not find _source in hit")
 		}
@@ -181,10 +178,13 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 		if !ok {
 			return errors.New("Could not find _source as map in hit")
 		}
+		row["_score"] = hit_["_score"]
 		err = gp.ProcessInputObject(row)
 		if err != nil {
 			return err
 		}
+
+		// TODO(manuel, 2023-02-22) Add explain functionality
 	}
 
 	return nil

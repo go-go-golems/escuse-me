@@ -8,27 +8,30 @@ import (
 type ESClientFactory func() (*elasticsearch.Client, error)
 
 func CreateClientFromViper() (*elasticsearch.Client, error) {
-	esAddresses := viper.GetStringSlice("addresses")
-	username := viper.GetString("username")
+	// TODO(manuel, 2023-02-23) Add prefix to be able to mix multiple similar layers into apps down the road
+	// See https://github.com/go-go-golems/glazed/issues/167
+	prefix := ""
+	esAddresses := viper.GetStringSlice(prefix + "addresses")
+	username := viper.GetString(prefix + "username")
 
 	cfg := elasticsearch.Config{
 		Addresses:               esAddresses,
 		Username:                username,
-		Password:                viper.GetString("password"),
-		CloudID:                 viper.GetString("cloud-id"),
-		APIKey:                  viper.GetString("api-key"),
-		ServiceToken:            viper.GetString("service-token"),
-		CertificateFingerprint:  viper.GetString("certificate-fingerprint"),
-		RetryOnStatus:           viper.GetIntSlice("retry-on-status"),
-		DisableRetry:            viper.GetBool("disable-retry"),
-		MaxRetries:              viper.GetInt("max-retries"),
+		Password:                viper.GetString(prefix + "password"),
+		CloudID:                 viper.GetString(prefix + "cloud-id"),
+		APIKey:                  viper.GetString(prefix + "api-key"),
+		ServiceToken:            viper.GetString(prefix + "service-token"),
+		CertificateFingerprint:  viper.GetString(prefix + "certificate-fingerprint"),
+		RetryOnStatus:           viper.GetIntSlice(prefix + "retry-on-status"),
+		DisableRetry:            viper.GetBool(prefix + "disable-retry"),
+		MaxRetries:              viper.GetInt(prefix + "max-retries"),
 		RetryOnError:            nil,
 		CompressRequestBody:     false,
 		DiscoverNodesOnStart:    false,
 		DiscoverNodesInterval:   0,
-		EnableMetrics:           viper.GetBool("enable-metrics"),
-		EnableDebugLogger:       viper.GetBool("enable-debug-logger"),
-		EnableCompatibilityMode: viper.GetBool("enable-compatibility-mode"),
+		EnableMetrics:           viper.GetBool(prefix + "enable-metrics"),
+		EnableDebugLogger:       viper.GetBool(prefix + "enable-debug-logger"),
+		EnableCompatibilityMode: viper.GetBool(prefix + "enable-compatibility-mode"),
 		DisableMetaHeader:       false,
 		RetryBackoff:            nil,
 		Transport:               nil,

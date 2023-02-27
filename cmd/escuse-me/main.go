@@ -72,23 +72,27 @@ func init() {
 	defaultDirectory := "$HOME/.escuse-me/queries"
 	repositories = append(repositories, defaultDirectory)
 
-	locations := clay.CommandLocations{
-		Embedded: []clay.EmbeddedCommandLocation{
-			{
+	esParameterLayer, err := pkg.NewESParameterLayer()
+	if err != nil {
+		panic(err)
+	}
+	locations := clay.NewCommandLocations(
+		clay.WithEmbeddedLocations(
+			clay.EmbeddedCommandLocation{
 				FS:      queriesFS,
 				Name:    "embed",
 				Root:    ".",
 				DocRoot: "queries/doc",
-			},
-		},
-		Repositories: repositories,
-	}
+			}),
+		clay.WithRepositories(repositories...),
+		clay.WithHelpSystem(helpSystem),
+		clay.WithAdditionalLayers(esParameterLayer),
+	)
 
 	clientFactory := pkg.CreateClientFromViper
 	loader := pkg.NewElasticSearchCommandLoader(clientFactory)
 
-	commands, aliases, err := locations.LoadCommands(
-		loader, helpSystem, rootCmd)
+	commands, aliases, err := locations.LoadCommands(loader, helpSystem, rootCmd)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Error initializing commands: %s\n", err)
 		os.Exit(1)
