@@ -5,6 +5,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/glycerine/zygomys/v6/zygo"
 	"github.com/go-go-golems/escuse-me/pkg"
+	"github.com/go-go-golems/glazed/pkg/cmds/layers"
 	"github.com/spf13/cobra"
 	"io"
 	"log"
@@ -14,7 +15,20 @@ var infoCmd = &cobra.Command{
 	Use:   "info",
 	Short: "Prints information about the ES server",
 	Run: func(cmd *cobra.Command, args []string) {
-		es, err := pkg.CreateClientFromViper()
+		esParameterLayer, err := pkg.NewESParameterLayer()
+		cobra.CheckErr(err)
+
+		ps, err := esParameterLayer.ParseFlagsFromCobraCommand(cmd)
+		cobra.CheckErr(err)
+
+		parsedLayers := map[string]*layers.ParsedParameterLayer{
+			"es-connection": &layers.ParsedParameterLayer{
+				Layer:      esParameterLayer,
+				Parameters: ps,
+			},
+		}
+
+		es, err := pkg.NewESClientFromParsedLayers(parsedLayers)
 		cobra.CheckErr(err)
 
 		log.Println(elasticsearch.Version)

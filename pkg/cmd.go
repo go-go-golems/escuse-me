@@ -8,6 +8,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/go-go-golems/glazed/pkg/cli"
 	"github.com/go-go-golems/glazed/pkg/cmds"
+	"github.com/go-go-golems/glazed/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
 	"github.com/go-go-golems/glazed/pkg/helpers"
 	"github.com/pkg/errors"
@@ -29,6 +30,8 @@ type EscuseMeCommandDescription struct {
 
 	QueryTemplate string `yaml:"queryTemplate,omitempty"`
 }
+
+type ESClientFactory func(map[string]*layers.ParsedParameterLayer) (*elasticsearch.Client, error)
 
 type ElasticSearchCommand struct {
 	description   *cmds.CommandDescription
@@ -54,8 +57,13 @@ func NewElasticSearchCommand(
 	}, nil
 }
 
-func (esc *ElasticSearchCommand) Run(ctx context.Context, ps map[string]interface{}, gp *cmds.GlazeProcessor) error {
-	es, err := esc.clientFactory()
+func (esc *ElasticSearchCommand) Run(
+	ctx context.Context,
+	parsedLayers map[string]*layers.ParsedParameterLayer,
+	ps map[string]interface{},
+	gp *cmds.GlazeProcessor,
+) error {
+	es, err := esc.clientFactory(parsedLayers)
 	cobra.CheckErr(err)
 
 	// TODO(2022-12-21, manuel): Add explain functionality

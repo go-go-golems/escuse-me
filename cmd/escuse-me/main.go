@@ -89,7 +89,7 @@ func init() {
 		clay.WithAdditionalLayers(esParameterLayer),
 	)
 
-	clientFactory := pkg.CreateClientFromViper
+	clientFactory := pkg.NewESClientFromParsedLayers
 	loader := pkg.NewElasticSearchCommandLoader(clientFactory)
 
 	commands, aliases, err := locations.LoadCommands(loader, helpSystem, rootCmd)
