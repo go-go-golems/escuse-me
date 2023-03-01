@@ -61,7 +61,7 @@ func (esc *ElasticSearchCommand) Run(
 	ctx context.Context,
 	parsedLayers map[string]*layers.ParsedParameterLayer,
 	ps map[string]interface{},
-	gp *cmds.GlazeProcessor,
+	gp cmds.Processor,
 ) error {
 	es, err := esc.clientFactory(parsedLayers)
 	cobra.CheckErr(err)
@@ -122,7 +122,7 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 	ctx context.Context,
 	es *elasticsearch.Client,
 	parameters map[string]interface{},
-	gp *cmds.GlazeProcessor,
+	gp cmds.Processor,
 ) error {
 	query, err := esc.RenderQueryToJSON(parameters)
 	if err != nil {
@@ -219,13 +219,17 @@ func NewElasticSearchCommandLoader(clientFactory ESClientFactory) *ElasticSearch
 	}
 }
 
-func (escl *ElasticSearchCommandLoader) LoadCommandAliasFromYAML(s io.Reader) ([]*cmds.CommandAlias, error) {
-	return cmds.LoadCommandAliasFromYAML(s)
+func (escl *ElasticSearchCommandLoader) LoadCommandAliasFromYAML(
+	s io.Reader,
+	options ...cmds.CommandDescriptionOption,
+) ([]*cmds.CommandAlias, error) {
+	return cmds.LoadCommandAliasFromYAML(s, options...)
 }
 
 func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 	f fs.FS,
 	dir string,
+	options ...cmds.CommandDescriptionOption,
 ) ([]cmds.Command, []*cmds.CommandAlias, error) {
 	mainFilePath := filepath.Join(dir, "main.yaml")
 
@@ -281,13 +285,18 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 		return nil, nil, errors.New("No query template specified")
 	}
 
-	esc, err := NewElasticSearchCommand(&cmds.CommandDescription{
+	description := &cmds.CommandDescription{
 		Name:      escd.Name,
 		Short:     escd.Short,
 		Long:      escd.Long,
 		Flags:     escd.Flags,
 		Arguments: escd.Arguments,
-	}, escl.clientFactory, queryTemplate)
+	}
+	for _, option := range options {
+		option(description)
+	}
+
+	esc, err := NewElasticSearchCommand(description, escl.clientFactory, queryTemplate)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -326,7 +335,7 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 						}
 					}(s)
 
-					alias, err := escl.LoadCommandAliasFromYAML(s)
+					alias, err := escl.LoadCommandAliasFromYAML(s, options...)
 					if err != nil {
 						return nil, nil, err
 					}
@@ -342,12 +351,13 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 func (l *ElasticSearchCommandLoader) LoadCommandsFromFS(
 	f fs.FS,
 	dir string,
+	options ...cmds.CommandDescriptionOption,
 ) ([]cmds.Command, []*cmds.CommandAlias, error) {
 	var commands []cmds.Command
 	var aliases []*cmds.CommandAlias
 
 	if strings.HasSuffix(dir, ".escuse-me") {
-		return l.LoadCommandFromDir(f, dir)
+		return l.LoadCommandFromDir(f, dir, options...)
 	}
 	entries, err := fs.ReadDir(f, dir)
 	if err != nil {
@@ -360,7 +370,7 @@ func (l *ElasticSearchCommandLoader) LoadCommandsFromFS(
 		}
 		fileName := filepath.Join(dir, entry.Name())
 		if entry.IsDir() {
-			subCommands, subAliases, err := l.LoadCommandsFromFS(f, fileName)
+			subCommands, subAliases, err := l.LoadCommandsFromFS(f, fileName, options...)
 			if err != nil {
 				return nil, nil, err
 			}
