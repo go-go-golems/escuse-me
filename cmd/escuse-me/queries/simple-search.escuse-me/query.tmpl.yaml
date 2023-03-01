@@ -24,6 +24,6 @@ query:
         type: {{ .multi_match_type }}
 size: {{ .size }}
 sort:
-  - in_stock: desc
   - _score: desc
+  - in_stock: desc
   - menu_order: asc

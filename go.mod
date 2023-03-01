@@ -5,8 +5,8 @@ go 1.19
 require (
 	github.com/elastic/go-elasticsearch/v8 v8.6.0
 	github.com/glycerine/zygomys/v6 v6.0.5
-	github.com/go-go-golems/clay v0.0.6-0.20230222151015-3d0fba6da4ce
-	github.com/go-go-golems/glazed v0.2.15
+	github.com/go-go-golems/clay v0.0.6-0.20230227024048-eb5821d715fc
+	github.com/go-go-golems/glazed v0.2.23
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.29.0
 	github.com/spf13/cobra v1.6.1
@@ -64,6 +64,7 @@ require (
 	github.com/tinylib/msgp v1.1.2 // indirect
 	github.com/tj/go-naturaldate v1.3.0 // indirect
 	github.com/ugorji/go/codec v1.1.7 // indirect
+	github.com/wesen/filepathx v1.0.1-0.20230227021146-d1c2e34eff6e // indirect
 	github.com/yuin/goldmark v1.5.4 // indirect
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
 	golang.org/x/crypto v0.5.0 // indirect

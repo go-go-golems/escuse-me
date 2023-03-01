@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/go-go-golems/glazed/pkg/cli"
 	glazed_cmds "github.com/go-go-golems/glazed/pkg/cmds"
+	"github.com/go-go-golems/glazed/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/middlewares"
 )
 
@@ -23,7 +24,12 @@ func (q *QueriesCommand) Description() *glazed_cmds.CommandDescription {
 	return q.description
 }
 
-func (q *QueriesCommand) Run(ctx context.Context, ps map[string]interface{}, gp *glazed_cmds.GlazeProcessor) error {
+func (q *QueriesCommand) Run(
+	ctx context.Context,
+	parsedLayers map[string]*layers.ParsedParameterLayer,
+	ps map[string]interface{},
+	gp *glazed_cmds.GlazeProcessor,
+) error {
 	gp.OutputFormatter().AddTableMiddleware(
 		middlewares.NewReorderColumnOrderMiddleware(
 			[]string{"name", "short", "long", "source", "query"}),
@@ -64,12 +70,15 @@ func NewQueriesCommand(
 	aliases []*glazed_cmds.CommandAlias,
 	options ...glazed_cmds.CommandDescriptionOption,
 ) (*QueriesCommand, error) {
-	glazeParameterLayer, err := cli.NewGlazedParameterLayers()
+	glazeParameterLayer, err := cli.NewGlazedParameterLayers(
+		cli.WithFieldsFiltersParameterLayerOptions(
+			layers.WithDefaults(
+				&cli.FieldsFilterFlagsDefaults{
+					Fields: []string{"name", "short", "source"},
+				})))
 	if err != nil {
 		return nil, err
 	}
-
-	glazeParameterLayer.FieldsFiltersParameterLayer.Defaults.Fields = []string{"name", "short", "source"}
 
 	options_ := append([]glazed_cmds.CommandDescriptionOption{
 		glazed_cmds.WithShort("Commands related to sqleton queries"),

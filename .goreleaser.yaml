@@ -33,6 +33,14 @@ changelog:
     exclude:
       - '^docs:'
       - '^test:'
+brews:
+  - name: escuse-me
+    description: "Escuse-me is a tool for querying elasticsearch"
+    homepage: "https://github.com/go-go-golems/escuse-me"
+    tap:
+      owner: go-go-golems
+      name: homebrew-go-go
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
 
 # modelines, feel free to remove those if you don't want/use them:
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
