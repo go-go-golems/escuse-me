@@ -12,7 +12,7 @@ import (
 var esFlagsYaml []byte
 
 type EsParameterLayer struct {
-	layers.ParameterLayerImpl
+	*layers.ParameterLayerImpl
 }
 
 type EsClientSettings struct {
@@ -49,13 +49,12 @@ func (ep *EsParameterLayer) ParseFlagsFromCobraCommand(
 	return ps, nil
 }
 
-func NewESParameterLayer() (*EsParameterLayer, error) {
-	ret := &EsParameterLayer{}
-	err := ret.LoadFromYAML(esFlagsYaml)
+func NewESParameterLayer(options ...layers.ParameterLayerOptions) (*EsParameterLayer, error) {
+	ret, err := layers.NewParameterLayerFromYAML(esFlagsYaml, options...)
 	if err != nil {
 		return nil, err
 	}
-	return ret, nil
+	return &EsParameterLayer{ParameterLayerImpl: ret}, nil
 }
 
 func NewESClientSettingsFromParsedLayers(parsedLayers map[string]*layers.ParsedParameterLayer) (*EsClientSettings, error) {
