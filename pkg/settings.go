@@ -36,6 +36,9 @@ func (ep *EsParameterLayer) ParseFlagsFromCobraCommand(
 ) (map[string]interface{}, error) {
 	// actually hijack and load everything from viper instead of cobra...
 	ps, err := parameters.GatherFlagsFromViper(ep.Flags, false, ep.Prefix)
+	if err != nil {
+		return nil, err
+	}
 
 	// now load from flag overrides
 	ps2, err := parameters.GatherFlagsFromCobraCommand(cmd, ep.Flags, true, ep.Prefix)
