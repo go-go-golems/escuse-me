@@ -61,7 +61,7 @@ func (esc *ElasticSearchCommand) Run(
 	ctx context.Context,
 	parsedLayers map[string]*layers.ParsedParameterLayer,
 	ps map[string]interface{},
-	gp *cmds.GlazeProcessor,
+	gp cmds.Processor,
 ) error {
 	es, err := esc.clientFactory(parsedLayers)
 	cobra.CheckErr(err)
@@ -122,7 +122,7 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 	ctx context.Context,
 	es *elasticsearch.Client,
 	parameters map[string]interface{},
-	gp *cmds.GlazeProcessor,
+	gp cmds.Processor,
 ) error {
 	query, err := esc.RenderQueryToJSON(parameters)
 	if err != nil {
