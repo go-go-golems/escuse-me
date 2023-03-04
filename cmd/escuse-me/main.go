@@ -114,7 +114,49 @@ func init() {
 
 	rootCmd.AddCommand(cobraQueriesCommand)
 
+	infoCommand, err := NewInfoCommand()
+	if err != nil {
+		panic(err)
+	}
+	infoCmd, err := cli.BuildCobraCommand(infoCommand)
+	if err != nil {
+		panic(err)
+	}
 	rootCmd.AddCommand(infoCmd)
 
-	rootCmd.AddCommand(zygoCmd)
+	indicesCommand := &cobra.Command{
+		Use:   "indices",
+		Short: "ES indices related commands",
+	}
+	rootCmd.AddCommand(indicesCommand)
+
+	indicesListCommand, err := NewIndicesListCommand()
+	if err != nil {
+		panic(err)
+	}
+	indicesListCmd, err := cli.BuildCobraCommand(indicesListCommand)
+	if err != nil {
+		panic(err)
+	}
+	indicesCommand.AddCommand(indicesListCmd)
+
+	indicesStatsCommand, err := NewIndicesStatsCommand()
+	if err != nil {
+		panic(err)
+	}
+	indicesStatsCmd, err := cli.BuildCobraCommand(indicesStatsCommand)
+	if err != nil {
+		panic(err)
+	}
+	indicesCommand.AddCommand(indicesStatsCmd)
+
+	indicesGetMappingCommand, err := NewIndicesGetMappingCommand()
+	if err != nil {
+		panic(err)
+	}
+	indicesGetMappingCmd, err := cli.BuildCobraCommand(indicesGetMappingCommand)
+	if err != nil {
+		panic(err)
+	}
+	indicesCommand.AddCommand(indicesGetMappingCmd)
 }
