@@ -81,7 +81,7 @@ func init() {
 			clay.EmbeddedCommandLocation{
 				FS:      queriesFS,
 				Name:    "embed",
-				Root:    ".",
+				Root:    "queries",
 				DocRoot: "queries/doc",
 			}),
 		clay.WithRepositories(repositories...),
@@ -90,7 +90,7 @@ func init() {
 	)
 
 	clientFactory := pkg.NewESClientFromParsedLayers
-	loader := pkg.NewElasticSearchCommandLoader(clientFactory)
+	loader := pkg.NewElasticSearchCommandLoader(clientFactory, "")
 
 	commands, aliases, err := locations.LoadCommands(loader, helpSystem, rootCmd)
 	if err != nil {

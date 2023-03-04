@@ -211,11 +211,16 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 //     and can be used to store things like tags and constant strings, boost values and the like
 type ElasticSearchCommandLoader struct {
 	clientFactory ESClientFactory
+	rootDir       string
 }
 
-func NewElasticSearchCommandLoader(clientFactory ESClientFactory) *ElasticSearchCommandLoader {
+func NewElasticSearchCommandLoader(
+	clientFactory ESClientFactory,
+	rootDir string,
+) *ElasticSearchCommandLoader {
 	return &ElasticSearchCommandLoader{
 		clientFactory: clientFactory,
+		rootDir:       rootDir,
 	}
 }
 
@@ -223,7 +228,7 @@ func (escl *ElasticSearchCommandLoader) LoadCommandAliasFromYAML(
 	s io.Reader,
 	options ...cmds.CommandDescriptionOption,
 ) ([]*cmds.CommandAlias, error) {
-	return cmds.LoadCommandAliasFromYAML(s, options...)
+	return cmds.LoadCommandAliasFromYAML(s)
 }
 
 func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
@@ -292,6 +297,14 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 		Flags:     escd.Flags,
 		Arguments: escd.Arguments,
 	}
+	parents := cmds.GetParentsFromDir(dir, escl.rootDir)
+	// remove last element, which is the function dir itself
+	if len(parents) > 0 {
+		parents = parents[:len(parents)-1]
+	}
+	description.Parents = parents
+	description.Source = ":" + dir
+
 	for _, option := range options {
 		option(description)
 	}
@@ -335,7 +348,7 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 						}
 					}(s)
 
-					alias, err := escl.LoadCommandAliasFromYAML(s, options...)
+					alias, err := escl.LoadCommandAliasFromYAML(s)
 					if err != nil {
 						return nil, nil, err
 					}
