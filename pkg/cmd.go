@@ -303,6 +303,9 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 		parents = parents[:len(parents)-1]
 	}
 	description.Parents = parents
+	// TODO(manuel, 2023-03-07) Pass in proper sourceName
+	//
+	// See https://github.com/go-go-golems/escuse-me/issues/7
 	description.Source = ":" + dir
 
 	for _, option := range options {
@@ -348,11 +351,16 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 						}
 					}(s)
 
-					alias, err := escl.LoadCommandAliasFromYAML(s)
+					aliases_, err := escl.LoadCommandAliasFromYAML(s)
 					if err != nil {
 						return nil, nil, err
 					}
-					aliases = append(aliases, alias...)
+					for _, alias := range aliases_ {
+						alias.Source = escl.rootDir + ":" + fileName
+
+						alias.Parents = append(esc.description.Parents, esc.description.Name)
+						aliases = append(aliases, alias)
+					}
 				}
 			}
 		}
