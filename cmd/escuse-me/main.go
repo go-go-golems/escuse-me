@@ -6,6 +6,7 @@ import (
 	clay "github.com/go-go-golems/clay/pkg"
 	"github.com/go-go-golems/escuse-me/pkg"
 	"github.com/go-go-golems/glazed/pkg/cli"
+	glazed_cmds "github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/help"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -92,7 +93,19 @@ func init() {
 	clientFactory := pkg.NewESClientFromParsedLayers
 	loader := pkg.NewElasticSearchCommandLoader(clientFactory, "")
 
-	commands, aliases, err := locations.LoadCommands(loader, helpSystem, rootCmd)
+	commandLoader := clay.NewCommandLoader[*pkg.ElasticSearchCommand](locations)
+	commands, aliases, err := commandLoader.LoadCommands(loader, helpSystem, rootCmd)
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Error initializing commands: %s\n", err)
+		os.Exit(1)
+	}
+
+	glazeCommands, ok := clay.CastList[glazed_cmds.GlazeCommand](commands)
+	if !ok {
+		_, _ = fmt.Fprintf(os.Stderr, "Error initializing commands: %s\n", err)
+		os.Exit(1)
+	}
+	err = cli.AddCommandsToRootCommand(rootCmd, glazeCommands, aliases)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Error initializing commands: %s\n", err)
 		os.Exit(1)
