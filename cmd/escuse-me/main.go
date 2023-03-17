@@ -44,19 +44,7 @@ func init() {
 		panic(err)
 	}
 
-	helpFunc, usageFunc := help.GetCobraHelpUsageFuncs(helpSystem)
-	helpTemplate, usageTemplate := help.GetCobraHelpUsageTemplates(helpSystem)
-
-	_ = usageFunc
-	_ = usageTemplate
-
-	rootCmd.SetHelpFunc(helpFunc)
-	rootCmd.SetUsageFunc(usageFunc)
-	rootCmd.SetHelpTemplate(helpTemplate)
-	rootCmd.SetUsageTemplate(usageTemplate)
-
-	helpCmd := help.NewCobraHelpCommand(helpSystem)
-	rootCmd.SetHelpCommand(helpCmd)
+	helpSystem.SetupCobraRootCommand(rootCmd)
 
 	err = clay.InitViper("escuse-me", rootCmd)
 	if err != nil {
@@ -120,7 +108,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	cobraQueriesCommand, err := cli.BuildCobraCommand(queriesCommand)
+	cobraQueriesCommand, err := cli.BuildCobraCommandFromGlazeCommand(queriesCommand)
 	if err != nil {
 		panic(err)
 	}
@@ -131,7 +119,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	infoCmd, err := cli.BuildCobraCommand(infoCommand)
+	infoCmd, err := cli.BuildCobraCommandFromGlazeCommand(infoCommand)
 	if err != nil {
 		panic(err)
 	}
@@ -147,7 +135,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	indicesListCmd, err := cli.BuildCobraCommand(indicesListCommand)
+	indicesListCmd, err := cli.BuildCobraCommandFromGlazeCommand(indicesListCommand)
 	if err != nil {
 		panic(err)
 	}
@@ -157,7 +145,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	indicesStatsCmd, err := cli.BuildCobraCommand(indicesStatsCommand)
+	indicesStatsCmd, err := cli.BuildCobraCommandFromGlazeCommand(indicesStatsCommand)
 	if err != nil {
 		panic(err)
 	}
@@ -167,7 +155,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	indicesGetMappingCmd, err := cli.BuildCobraCommand(indicesGetMappingCommand)
+	indicesGetMappingCmd, err := cli.BuildCobraCommandFromGlazeCommand(indicesGetMappingCommand)
 	if err != nil {
 		panic(err)
 	}
