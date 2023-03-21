@@ -10,7 +10,7 @@ import (
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
-	"github.com/go-go-golems/glazed/pkg/middlewares"
+	"github.com/go-go-golems/glazed/pkg/middlewares/table"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"io"
@@ -67,7 +67,7 @@ func (i *InfoCommand) Run(
 	cobra.CheckErr(err)
 
 	gp.OutputFormatter().AddTableMiddleware(
-		middlewares.NewReorderColumnOrderMiddleware(
+		table.NewReorderColumnOrderMiddleware(
 			[]string{"client_version", "version", "cluster_name"},
 		),
 	)
@@ -155,7 +155,7 @@ func (i *IndicesListCommand) Run(
 	cobra.CheckErr(err)
 
 	gp.OutputFormatter().AddTableMiddleware(
-		middlewares.NewReorderColumnOrderMiddleware(
+		table.NewReorderColumnOrderMiddleware(
 			[]string{"health", "status", "index", "uuid", "pri", "rep", "docs.count", "docs.deleted", "store.size", "pri.store.size"},
 		),
 	)
@@ -348,7 +348,7 @@ func (i *IndicesGetMappingCommand) Run(
 	index := ps["index"].(string)
 
 	gp.OutputFormatter().AddTableMiddleware(
-		middlewares.NewReorderColumnOrderMiddleware([]string{"field", "type", "fields"}),
+		table.NewReorderColumnOrderMiddleware([]string{"field", "type", "fields"}),
 	)
 
 	res, err := es.Indices.GetMapping(

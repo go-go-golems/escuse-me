@@ -10,7 +10,8 @@ import (
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
-	"github.com/go-go-golems/glazed/pkg/helpers"
+	"github.com/go-go-golems/glazed/pkg/helpers/files"
+	"github.com/go-go-golems/glazed/pkg/helpers/templating"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -100,13 +101,13 @@ func (esc *ElasticSearchCommand) Description() *cmds.CommandDescription {
 }
 
 func (esc *ElasticSearchCommand) RenderQuery(parameters map[string]interface{}) (string, error) {
-	tmpl := helpers.CreateTemplate("query")
+	tmpl := templating.CreateTemplate("query")
 	tmpl, err := tmpl.Parse(esc.Query)
 	if err != nil {
 		return "", err
 	}
 
-	return helpers.RenderTemplate(tmpl, parameters)
+	return templating.RenderTemplate(tmpl, parameters)
 }
 
 func (esc *ElasticSearchCommand) RenderQueryToJSON(parameters map[string]interface{}) (string, error) {
@@ -115,7 +116,7 @@ func (esc *ElasticSearchCommand) RenderQueryToJSON(parameters map[string]interfa
 		return "", err
 	}
 
-	return helpers.ConvertYAMLMapToJSON(query)
+	return files.ConvertYAMLMapToJSON(query)
 }
 
 func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
