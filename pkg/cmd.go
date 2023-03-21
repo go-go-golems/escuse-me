@@ -14,7 +14,6 @@ import (
 	"github.com/go-go-golems/glazed/pkg/helpers/templating"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
@@ -65,7 +64,9 @@ func (esc *ElasticSearchCommand) Run(
 	gp cmds.Processor,
 ) error {
 	es, err := esc.clientFactory(parsedLayers)
-	cobra.CheckErr(err)
+	if err != nil {
+		return errors.Wrapf(err, "Could not create ES client")
+	}
 
 	// TODO(2022-12-21, manuel): Add explain functionality
 	// See: https://github.com/wesen/sqleton/issues/45
@@ -90,6 +91,10 @@ func (esc *ElasticSearchCommand) Run(
 			fmt.Println(query)
 			return &cmds.ExitWithoutGlazeError{}
 		}
+	}
+
+	if es == nil {
+		return errors.New("ES client is nil")
 	}
 
 	err = esc.RunQueryIntoGlaze(ctx, es, ps, gp)
@@ -128,6 +133,10 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 	query, err := esc.RenderQueryToJSON(parameters)
 	if err != nil {
 		return errors.Wrapf(err, "Could not generate query")
+	}
+
+	if es == nil {
+		return errors.New("ES client is nil")
 	}
 
 	queryReader := strings.NewReader(query)
@@ -245,6 +254,10 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 		if _, ok := err.(*fs.PathError); !ok {
 			return nil, nil, errors.Wrapf(err, "Could not open main.yaml file for command %s", dir)
 		}
+	}
+
+	if s == nil {
+		return []cmds.Command{}, []*cmds.CommandAlias{}, nil
 	}
 
 	defer func(s fs.File) {
