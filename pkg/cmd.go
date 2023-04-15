@@ -8,7 +8,9 @@ import (
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/go-go-golems/glazed/pkg/cli"
 	"github.com/go-go-golems/glazed/pkg/cmds"
+	"github.com/go-go-golems/glazed/pkg/cmds/alias"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
+	"github.com/go-go-golems/glazed/pkg/cmds/loaders"
 	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
 	"github.com/go-go-golems/glazed/pkg/helpers/files"
 	"github.com/go-go-golems/glazed/pkg/helpers/templating"
@@ -221,31 +223,28 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 //     and can be used to store things like tags and constant strings, boost values and the like
 type ElasticSearchCommandLoader struct {
 	clientFactory ESClientFactory
-	rootDir       string
 }
 
 func NewElasticSearchCommandLoader(
 	clientFactory ESClientFactory,
-	rootDir string,
 ) *ElasticSearchCommandLoader {
 	return &ElasticSearchCommandLoader{
 		clientFactory: clientFactory,
-		rootDir:       rootDir,
 	}
 }
 
 func (escl *ElasticSearchCommandLoader) LoadCommandAliasFromYAML(
 	s io.Reader,
-	options ...cmds.CommandDescriptionOption,
-) ([]*cmds.CommandAlias, error) {
-	return cmds.LoadCommandAliasFromYAML(s)
+	options ...alias.Option,
+) ([]*alias.CommandAlias, error) {
+	return loaders.LoadCommandAliasFromYAML(s, options...)
 }
 
 func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 	f fs.FS,
 	dir string,
 	options ...cmds.CommandDescriptionOption,
-) ([]cmds.Command, []*cmds.CommandAlias, error) {
+) ([]cmds.Command, []*alias.CommandAlias, error) {
 	mainFilePath := filepath.Join(dir, "main.yaml")
 
 	s, err := f.Open(mainFilePath)
@@ -257,7 +256,7 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 	}
 
 	if s == nil {
-		return []cmds.Command{}, []*cmds.CommandAlias{}, nil
+		return []cmds.Command{}, []*alias.CommandAlias{}, nil
 	}
 
 	defer func(s fs.File) {
@@ -311,7 +310,7 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 		Flags:     escd.Flags,
 		Arguments: escd.Arguments,
 	}
-	parents := cmds.GetParentsFromDir(dir, escl.rootDir)
+	parents := loaders.GetParentsFromDir(dir)
 	// remove last element, which is the function dir itself
 	if len(parents) > 0 {
 		parents = parents[:len(parents)-1]
@@ -331,7 +330,7 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 		return nil, nil, err
 	}
 
-	aliases := []*cmds.CommandAlias{}
+	aliases := []*alias.CommandAlias{}
 
 	// check for aliases in alias folder
 	aliasDir := filepath.Join(dir, "alias")
@@ -370,7 +369,7 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 						return nil, nil, err
 					}
 					for _, alias := range aliases_ {
-						alias.Source = escl.rootDir + ":" + fileName
+						alias.Source = fileName
 
 						alias.Parents = append(esc.description.Parents, esc.description.Name)
 						aliases = append(aliases, alias)
@@ -383,13 +382,9 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 	return []cmds.Command{esc}, aliases, nil
 }
 
-func (l *ElasticSearchCommandLoader) LoadCommandsFromFS(
-	f fs.FS,
-	dir string,
-	options ...cmds.CommandDescriptionOption,
-) ([]cmds.Command, []*cmds.CommandAlias, error) {
+func (l *ElasticSearchCommandLoader) LoadCommandsFromFS(f fs.FS, dir string, options []cmds.CommandDescriptionOption, aliasOptions []alias.Option) ([]cmds.Command, []*alias.CommandAlias, error) {
 	var commands []cmds.Command
-	var aliases []*cmds.CommandAlias
+	var aliases []*alias.CommandAlias
 
 	if strings.HasSuffix(dir, ".escuse-me") {
 		return l.LoadCommandFromDir(f, dir, options...)
@@ -405,7 +400,7 @@ func (l *ElasticSearchCommandLoader) LoadCommandsFromFS(
 		}
 		fileName := filepath.Join(dir, entry.Name())
 		if entry.IsDir() {
-			subCommands, subAliases, err := l.LoadCommandsFromFS(f, fileName, options...)
+			subCommands, subAliases, err := l.LoadCommandsFromFS(f, fileName, options, nil)
 			if err != nil {
 				return nil, nil, err
 			}

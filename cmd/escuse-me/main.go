@@ -4,6 +4,7 @@ import (
 	"embed"
 	"fmt"
 	clay "github.com/go-go-golems/clay/pkg"
+	"github.com/go-go-golems/clay/pkg/cmds"
 	"github.com/go-go-golems/escuse-me/pkg"
 	"github.com/go-go-golems/glazed/pkg/cli"
 	glazed_cmds "github.com/go-go-golems/glazed/pkg/cmds"
@@ -29,7 +30,7 @@ func main() {
 	if len(os.Args) >= 3 && os.Args[1] == "run-command" && os.Args[2] != "--help" {
 		// load the command
 		clientFactory := pkg.NewESClientFromParsedLayers
-		loader := pkg.NewElasticSearchCommandLoader(clientFactory, "")
+		loader := pkg.NewElasticSearchCommandLoader(clientFactory)
 		fi, err := os.Stat(os.Args[2])
 		cobra.CheckErr(err)
 		if !fi.IsDir() {
@@ -139,24 +140,24 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	if err != nil {
 		return err
 	}
-	locations := clay.NewCommandLocations(
-		clay.WithEmbeddedLocations(
-			clay.EmbeddedCommandLocation{
+	locations := cmds.NewCommandLocations(
+		cmds.WithEmbeddedLocations(
+			cmds.EmbeddedCommandLocation{
 				FS:      queriesFS,
 				Name:    "embed",
 				Root:    "queries",
 				DocRoot: "queries/doc",
 			}),
-		clay.WithRepositories(repositories...),
-		clay.WithHelpSystem(helpSystem),
-		clay.WithAdditionalLayers(esParameterLayer),
+		cmds.WithRepositories(repositories...),
+		cmds.WithHelpSystem(helpSystem),
+		cmds.WithAdditionalLayers(esParameterLayer),
 	)
 
 	clientFactory := pkg.NewESClientFromParsedLayers
-	loader := pkg.NewElasticSearchCommandLoader(clientFactory, "")
+	loader := pkg.NewElasticSearchCommandLoader(clientFactory)
 
-	commandLoader := clay.NewCommandLoader[*pkg.ElasticSearchCommand](locations)
-	commands, aliases, err := commandLoader.LoadCommands(loader, helpSystem, rootCmd)
+	commandLoader := cmds.NewCommandLoader[*pkg.ElasticSearchCommand](locations)
+	commands, aliases, err := commandLoader.LoadCommands(loader, helpSystem)
 	if err != nil {
 		return err
 	}
