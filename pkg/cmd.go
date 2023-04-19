@@ -10,6 +10,7 @@ import (
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/alias"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
+	"github.com/go-go-golems/glazed/pkg/cmds/layout"
 	"github.com/go-go-golems/glazed/pkg/cmds/loaders"
 	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
 	"github.com/go-go-golems/glazed/pkg/helpers/files"
@@ -27,6 +28,7 @@ type EscuseMeCommandDescription struct {
 	Name      string                            `yaml:"name"`
 	Short     string                            `yaml:"short"`
 	Long      string                            `yaml:"long,omitempty"`
+	Layout    []*layout.Section                 `yaml:"layout,omitempty"`
 	Flags     []*parameters.ParameterDefinition `yaml:"flags,omitempty"`
 	Arguments []*parameters.ParameterDefinition `yaml:"arguments,omitempty"`
 
@@ -303,31 +305,28 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 		return nil, nil, errors.New("No query template specified")
 	}
 
-	description := &cmds.CommandDescription{
-		Name:      escd.Name,
-		Short:     escd.Short,
-		Long:      escd.Long,
-		Flags:     escd.Flags,
-		Arguments: escd.Arguments,
+	options_ := []cmds.CommandDescriptionOption{
+		cmds.WithShort(escd.Short),
+		cmds.WithLong(escd.Long),
+		cmds.WithFlags(escd.Flags...),
+		cmds.WithArguments(escd.Arguments...),
+		cmds.WithLayout(&layout.Layout{
+			Sections: escd.Layout,
+		}),
 	}
-	parents := loaders.GetParentsFromDir(dir)
-	// remove last element, which is the function dir itself
-	if len(parents) > 0 {
-		parents = parents[:len(parents)-1]
-	}
-	description.Parents = parents
-	// TODO(manuel, 2023-03-07) Pass in proper sourceName
-	//
-	// See https://github.com/go-go-golems/escuse-me/issues/7
-	description.Source = ":" + dir
 
-	for _, option := range options {
-		option(description)
-	}
+	description := cmds.NewCommandDescription(
+		escd.Name,
+		options_...,
+	)
 
 	esc, err := NewElasticSearchCommand(description, escl.clientFactory, queryTemplate)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	for _, option := range options {
+		option(esc.Description())
 	}
 
 	aliases := []*alias.CommandAlias{}
