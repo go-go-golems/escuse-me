@@ -15,6 +15,7 @@ import (
 	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
 	"github.com/go-go-golems/glazed/pkg/helpers/files"
 	"github.com/go-go-golems/glazed/pkg/helpers/templating"
+	"github.com/go-go-golems/glazed/pkg/processor"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
@@ -65,7 +66,7 @@ func (esc *ElasticSearchCommand) Run(
 	ctx context.Context,
 	parsedLayers map[string]*layers.ParsedParameterLayer,
 	ps map[string]interface{},
-	gp cmds.Processor,
+	gp processor.Processor,
 ) error {
 	es, err := esc.clientFactory(parsedLayers)
 	if err != nil {
@@ -132,7 +133,7 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 	ctx context.Context,
 	es *elasticsearch.Client,
 	parameters map[string]interface{},
-	gp cmds.Processor,
+	gp processor.Processor,
 ) error {
 	query, err := esc.RenderQueryToJSON(parameters)
 	if err != nil {
@@ -201,7 +202,7 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 			return errors.New("Could not find _source as map in hit")
 		}
 		row["_score"] = hit_["_score"]
-		err = gp.ProcessInputObject(row)
+		err = gp.ProcessInputObject(ctx, row)
 		if err != nil {
 			return err
 		}

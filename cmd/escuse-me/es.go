@@ -11,6 +11,7 @@ import (
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
 	"github.com/go-go-golems/glazed/pkg/middlewares/table"
+	"github.com/go-go-golems/glazed/pkg/processor"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"io"
@@ -61,7 +62,7 @@ func (i *InfoCommand) Run(
 	ctx context.Context,
 	parsedLayers map[string]*layers.ParsedParameterLayer,
 	ps map[string]interface{},
-	gp cmds.Processor,
+	gp processor.Processor,
 ) error {
 	es, err := pkg.NewESClientFromParsedLayers(parsedLayers)
 	cobra.CheckErr(err)
@@ -99,7 +100,7 @@ func (i *InfoCommand) Run(
 	}
 	body_["client_version"] = clientVersion
 
-	err = gp.ProcessInputObject(body_)
+	err = gp.ProcessInputObject(ctx, body_)
 	if err != nil {
 		return err
 	}
@@ -149,7 +150,7 @@ func (i *IndicesListCommand) Run(
 	ctx context.Context,
 	parsedLayers map[string]*layers.ParsedParameterLayer,
 	ps map[string]interface{},
-	gp cmds.Processor,
+	gp processor.Processor,
 ) error {
 	es, err := pkg.NewESClientFromParsedLayers(parsedLayers)
 	cobra.CheckErr(err)
@@ -188,7 +189,7 @@ func (i *IndicesListCommand) Run(
 				"index":  index["index"],
 			}
 		}
-		err = gp.ProcessInputObject(index)
+		err = gp.ProcessInputObject(ctx, index)
 		if err != nil {
 			return err
 		}
@@ -249,7 +250,7 @@ func (i *IndicesStatsCommand) Run(
 	ctx context.Context,
 	parsedLayers map[string]*layers.ParsedParameterLayer,
 	ps map[string]interface{},
-	gp cmds.Processor,
+	gp processor.Processor,
 ) error {
 	es, err := pkg.NewESClientFromParsedLayers(parsedLayers)
 	cobra.CheckErr(err)
@@ -279,7 +280,7 @@ func (i *IndicesStatsCommand) Run(
 	}
 	full := ps["full"].(bool)
 	_ = full
-	err = gp.ProcessInputObject(body_)
+	err = gp.ProcessInputObject(ctx, body_)
 	if err != nil {
 		return err
 	}
@@ -340,7 +341,7 @@ func (i *IndicesGetMappingCommand) Run(
 	ctx context.Context,
 	parsedLayers map[string]*layers.ParsedParameterLayer,
 	ps map[string]interface{},
-	gp cmds.Processor,
+	gp processor.Processor,
 ) error {
 	es, err := pkg.NewESClientFromParsedLayers(parsedLayers)
 	cobra.CheckErr(err)
@@ -385,7 +386,7 @@ func (i *IndicesGetMappingCommand) Run(
 	}
 
 	if full {
-		err = gp.ProcessInputObject(m)
+		err = gp.ProcessInputObject(ctx, m)
 		if err != nil {
 			return err
 		}
@@ -406,7 +407,7 @@ func (i *IndicesGetMappingCommand) Run(
 		})
 
 		for _, row := range rows {
-			err = gp.ProcessInputObject(row)
+			err = gp.ProcessInputObject(ctx, row)
 			if err != nil {
 				return err
 			}
