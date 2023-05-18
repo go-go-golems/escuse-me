@@ -2,12 +2,12 @@ package pkg
 
 import (
 	"context"
-	"github.com/go-go-golems/glazed/pkg/cli"
 	glazed_cmds "github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/alias"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/middlewares/table"
 	"github.com/go-go-golems/glazed/pkg/processor"
+	"github.com/go-go-golems/glazed/pkg/settings"
 )
 
 // TODO(manuel, 2023-02-07) This should go to glazed into the commands section
@@ -72,10 +72,10 @@ func NewQueriesCommand(
 	aliases []*alias.CommandAlias,
 	options ...glazed_cmds.CommandDescriptionOption,
 ) (*QueriesCommand, error) {
-	glazeParameterLayer, err := cli.NewGlazedParameterLayers(
-		cli.WithFieldsFiltersParameterLayerOptions(
+	glazeParameterLayer, err := settings.NewGlazedParameterLayers(
+		settings.WithFieldsFiltersParameterLayerOptions(
 			layers.WithDefaults(
-				&cli.FieldsFilterFlagsDefaults{
+				&settings.FieldsFilterFlagsDefaults{
 					Fields: []string{"name", "short", "source"},
 				})))
 	if err != nil {

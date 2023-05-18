@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/go-go-golems/escuse-me/pkg"
-	"github.com/go-go-golems/glazed/pkg/cli"
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
 	"github.com/go-go-golems/glazed/pkg/middlewares/table"
 	"github.com/go-go-golems/glazed/pkg/processor"
+	"github.com/go-go-golems/glazed/pkg/settings"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"io"
@@ -24,7 +24,7 @@ type InfoCommand struct {
 }
 
 func NewInfoCommand() (*InfoCommand, error) {
-	glazedParameterLayer, err := cli.NewGlazedParameterLayers()
+	glazedParameterLayer, err := settings.NewGlazedParameterLayers()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create Glazed parameter layer")
 	}
@@ -112,7 +112,7 @@ type IndicesListCommand struct {
 }
 
 func NewIndicesListCommand() (*IndicesListCommand, error) {
-	glazedParameterLayer, err := cli.NewGlazedParameterLayers()
+	glazedParameterLayer, err := settings.NewGlazedParameterLayers()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create Glazed parameter layer")
 	}
@@ -202,8 +202,8 @@ type IndicesStatsCommand struct {
 }
 
 func NewIndicesStatsCommand() (*IndicesStatsCommand, error) {
-	glazedParameterLayer, err := cli.NewGlazedParameterLayers(
-		cli.WithOutputParameterLayerOptions(
+	glazedParameterLayer, err := settings.NewGlazedParameterLayers(
+		settings.WithOutputParameterLayerOptions(
 			layers.WithDefaults(map[string]interface{}{
 				"output": "json",
 			})))
@@ -292,7 +292,7 @@ type IndicesGetMappingCommand struct {
 }
 
 func NewIndicesGetMappingCommand() (*IndicesGetMappingCommand, error) {
-	glazedParameterLayer, err := cli.NewGlazedParameterLayers(
+	glazedParameterLayer, err := settings.NewGlazedParameterLayers(
 	//cli.WithOutputParameterLayerOptions(
 	//	layers.WithDefaults(map[string]interface{}{
 	//		"output": "json",
