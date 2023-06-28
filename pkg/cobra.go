@@ -5,9 +5,9 @@ import (
 	glazed_cmds "github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/alias"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
-	"github.com/go-go-golems/glazed/pkg/middlewares/table"
 	"github.com/go-go-golems/glazed/pkg/processor"
 	"github.com/go-go-golems/glazed/pkg/settings"
+	"github.com/go-go-golems/glazed/pkg/types"
 )
 
 // TODO(manuel, 2023-02-07) This should go to glazed into the commands section
@@ -30,35 +30,30 @@ func (q *QueriesCommand) Run(
 	ctx context.Context,
 	parsedLayers map[string]*layers.ParsedParameterLayer,
 	ps map[string]interface{},
-	gp processor.Processor,
+	gp processor.TableProcessor,
 ) error {
-	gp.OutputFormatter().AddTableMiddleware(
-		table.NewReorderColumnOrderMiddleware(
-			[]string{"name", "short", "long", "source", "query"}),
-	)
-
 	for _, query := range q.queries {
 		description := query.Description()
-		obj := map[string]interface{}{
-			"name":   description.Name,
-			"short":  description.Short,
-			"long":   description.Long,
-			"query":  query.Query,
-			"source": description.Source,
-		}
-		err := gp.ProcessInputObject(ctx, obj)
+		obj := types.NewRow(
+			types.MRP("name", description.Name),
+			types.MRP("short", description.Short),
+			types.MRP("long", description.Long),
+			types.MRP("query", query.Query),
+			types.MRP("source", description.Source),
+		)
+		err := gp.AddRow(ctx, obj)
 		if err != nil {
 			return err
 		}
 	}
 
 	for _, alias := range q.aliases {
-		obj := map[string]interface{}{
-			"name":     alias.Name,
-			"aliasFor": alias.AliasFor,
-			"source":   alias.Source,
-		}
-		err := gp.ProcessInputObject(ctx, obj)
+		obj := types.NewRow(
+			types.MRP("name", alias.Name),
+			types.MRP("aliasFor", alias.AliasFor),
+			types.MRP("source", alias.Source),
+		)
+		err := gp.AddRow(ctx, obj)
 		if err != nil {
 			return err
 		}

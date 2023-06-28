@@ -9,9 +9,10 @@ import (
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
-	"github.com/go-go-golems/glazed/pkg/middlewares/table"
+	"github.com/go-go-golems/glazed/pkg/middlewares/row"
 	"github.com/go-go-golems/glazed/pkg/processor"
 	"github.com/go-go-golems/glazed/pkg/settings"
+	"github.com/go-go-golems/glazed/pkg/types"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"io"
@@ -62,13 +63,13 @@ func (i *InfoCommand) Run(
 	ctx context.Context,
 	parsedLayers map[string]*layers.ParsedParameterLayer,
 	ps map[string]interface{},
-	gp processor.Processor,
+	gp processor.TableProcessor,
 ) error {
 	es, err := pkg.NewESClientFromParsedLayers(parsedLayers)
 	cobra.CheckErr(err)
 
-	gp.OutputFormatter().AddTableMiddleware(
-		table.NewReorderColumnOrderMiddleware(
+	gp.AddRowMiddleware(
+		row.NewReorderColumnOrderMiddleware(
 			[]string{"client_version", "version", "cluster_name"},
 		),
 	)
@@ -88,19 +89,23 @@ func (i *InfoCommand) Run(
 	body, err := io.ReadAll(res.Body)
 	cobra.CheckErr(err)
 
-	body_ := map[string]interface{}{}
+	body_ := types.NewRow()
 	err = json.Unmarshal(body, &body_)
 	if err != nil {
 		return err
 	}
 	full := ps["full"].(bool)
 	if !full {
-		version := body_["version"].(map[string]interface{})
-		body_["version"] = version["number"]
+		version_, ok := body_.Get("version")
+		if !ok {
+			return errors.New("could not find version in response")
+		}
+		version := version_.(map[string]interface{})
+		body_.Set("version", version["number"])
 	}
-	body_["client_version"] = clientVersion
+	body_.Set("client_version", clientVersion)
 
-	err = gp.ProcessInputObject(ctx, body_)
+	err = gp.AddRow(ctx, body_)
 	if err != nil {
 		return err
 	}
@@ -150,13 +155,13 @@ func (i *IndicesListCommand) Run(
 	ctx context.Context,
 	parsedLayers map[string]*layers.ParsedParameterLayer,
 	ps map[string]interface{},
-	gp processor.Processor,
+	gp processor.TableProcessor,
 ) error {
 	es, err := pkg.NewESClientFromParsedLayers(parsedLayers)
 	cobra.CheckErr(err)
 
-	gp.OutputFormatter().AddTableMiddleware(
-		table.NewReorderColumnOrderMiddleware(
+	gp.AddRowMiddleware(
+		row.NewReorderColumnOrderMiddleware(
 			[]string{"health", "status", "index", "uuid", "pri", "rep", "docs.count", "docs.deleted", "store.size", "pri.store.size"},
 		),
 	)
@@ -175,7 +180,7 @@ func (i *IndicesListCommand) Run(
 	body, err := io.ReadAll(res.Body)
 	cobra.CheckErr(err)
 
-	body_ := []map[string]interface{}{}
+	body_ := []types.Row{}
 	err = json.Unmarshal(body, &body_)
 	if err != nil {
 		return err
@@ -183,13 +188,17 @@ func (i *IndicesListCommand) Run(
 	full := ps["full"].(bool)
 	for _, index := range body_ {
 		if !full {
-			index = map[string]interface{}{
-				"health": index["health"],
-				"status": index["status"],
-				"index":  index["index"],
-			}
+			health_, _ := index.Get("health")
+			status_, _ := index.Get("status")
+			index_, _ := index.Get("index")
+
+			index = types.NewRow(
+				types.MRP("health", health_),
+				types.MRP("status", status_),
+				types.MRP("index", index_),
+			)
 		}
-		err = gp.ProcessInputObject(ctx, index)
+		err = gp.AddRow(ctx, index)
 		if err != nil {
 			return err
 		}
@@ -250,7 +259,7 @@ func (i *IndicesStatsCommand) Run(
 	ctx context.Context,
 	parsedLayers map[string]*layers.ParsedParameterLayer,
 	ps map[string]interface{},
-	gp processor.Processor,
+	gp processor.TableProcessor,
 ) error {
 	es, err := pkg.NewESClientFromParsedLayers(parsedLayers)
 	cobra.CheckErr(err)
@@ -273,14 +282,14 @@ func (i *IndicesStatsCommand) Run(
 	body, err := io.ReadAll(res.Body)
 	cobra.CheckErr(err)
 
-	body_ := map[string]interface{}{}
+	body_ := types.NewRow()
 	err = json.Unmarshal(body, &body_)
 	if err != nil {
 		return err
 	}
 	full := ps["full"].(bool)
 	_ = full
-	err = gp.ProcessInputObject(ctx, body_)
+	err = gp.AddRow(ctx, body_)
 	if err != nil {
 		return err
 	}
@@ -341,15 +350,15 @@ func (i *IndicesGetMappingCommand) Run(
 	ctx context.Context,
 	parsedLayers map[string]*layers.ParsedParameterLayer,
 	ps map[string]interface{},
-	gp processor.Processor,
+	gp processor.TableProcessor,
 ) error {
 	es, err := pkg.NewESClientFromParsedLayers(parsedLayers)
 	cobra.CheckErr(err)
 
 	index := ps["index"].(string)
 
-	gp.OutputFormatter().AddTableMiddleware(
-		table.NewReorderColumnOrderMiddleware([]string{"field", "type", "fields"}),
+	gp.AddRowMiddleware(
+		row.NewReorderColumnOrderMiddleware([]string{"field", "type", "fields"}),
 	)
 
 	res, err := es.Indices.GetMapping(
@@ -386,7 +395,7 @@ func (i *IndicesGetMappingCommand) Run(
 	}
 
 	if full {
-		err = gp.ProcessInputObject(ctx, m)
+		err = gp.AddRow(ctx, types.NewRowFromMap(m))
 		if err != nil {
 			return err
 		}
@@ -407,7 +416,7 @@ func (i *IndicesGetMappingCommand) Run(
 		})
 
 		for _, row := range rows {
-			err = gp.ProcessInputObject(ctx, row)
+			err = gp.AddRow(ctx, types.NewRowFromMap(row))
 			if err != nil {
 				return err
 			}
