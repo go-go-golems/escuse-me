@@ -14,7 +14,7 @@ import (
 	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
 	"github.com/go-go-golems/glazed/pkg/helpers/files"
 	"github.com/go-go-golems/glazed/pkg/helpers/templating"
-	"github.com/go-go-golems/glazed/pkg/processor"
+	"github.com/go-go-golems/glazed/pkg/middlewares"
 	"github.com/go-go-golems/glazed/pkg/settings"
 	"github.com/go-go-golems/glazed/pkg/types"
 	"github.com/pkg/errors"
@@ -67,7 +67,7 @@ func (esc *ElasticSearchCommand) Run(
 	ctx context.Context,
 	parsedLayers map[string]*layers.ParsedParameterLayer,
 	ps map[string]interface{},
-	gp processor.TableProcessor,
+	gp middlewares.Processor,
 ) error {
 	es, err := esc.clientFactory(parsedLayers)
 	if err != nil {
@@ -134,7 +134,7 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 	ctx context.Context,
 	es *elasticsearch.Client,
 	parameters map[string]interface{},
-	gp processor.TableProcessor,
+	gp middlewares.Processor,
 ) error {
 	query, err := esc.RenderQueryToJSON(parameters)
 	if err != nil {
