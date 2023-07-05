@@ -9,8 +9,8 @@ import (
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
+	"github.com/go-go-golems/glazed/pkg/middlewares"
 	"github.com/go-go-golems/glazed/pkg/middlewares/row"
-	"github.com/go-go-golems/glazed/pkg/processor"
 	"github.com/go-go-golems/glazed/pkg/settings"
 	"github.com/go-go-golems/glazed/pkg/types"
 	"github.com/pkg/errors"
@@ -63,12 +63,12 @@ func (i *InfoCommand) Run(
 	ctx context.Context,
 	parsedLayers map[string]*layers.ParsedParameterLayer,
 	ps map[string]interface{},
-	gp processor.TableProcessor,
+	gp middlewares.Processor,
 ) error {
 	es, err := pkg.NewESClientFromParsedLayers(parsedLayers)
 	cobra.CheckErr(err)
 
-	gp.AddRowMiddleware(
+	gp.(*middlewares.TableProcessor).AddRowMiddleware(
 		row.NewReorderColumnOrderMiddleware(
 			[]string{"client_version", "version", "cluster_name"},
 		),
@@ -155,12 +155,12 @@ func (i *IndicesListCommand) Run(
 	ctx context.Context,
 	parsedLayers map[string]*layers.ParsedParameterLayer,
 	ps map[string]interface{},
-	gp processor.TableProcessor,
+	gp middlewares.Processor,
 ) error {
 	es, err := pkg.NewESClientFromParsedLayers(parsedLayers)
 	cobra.CheckErr(err)
 
-	gp.AddRowMiddleware(
+	gp.(*middlewares.TableProcessor).AddRowMiddleware(
 		row.NewReorderColumnOrderMiddleware(
 			[]string{"health", "status", "index", "uuid", "pri", "rep", "docs.count", "docs.deleted", "store.size", "pri.store.size"},
 		),
@@ -259,7 +259,7 @@ func (i *IndicesStatsCommand) Run(
 	ctx context.Context,
 	parsedLayers map[string]*layers.ParsedParameterLayer,
 	ps map[string]interface{},
-	gp processor.TableProcessor,
+	gp middlewares.Processor,
 ) error {
 	es, err := pkg.NewESClientFromParsedLayers(parsedLayers)
 	cobra.CheckErr(err)
@@ -350,14 +350,14 @@ func (i *IndicesGetMappingCommand) Run(
 	ctx context.Context,
 	parsedLayers map[string]*layers.ParsedParameterLayer,
 	ps map[string]interface{},
-	gp processor.TableProcessor,
+	gp middlewares.Processor,
 ) error {
 	es, err := pkg.NewESClientFromParsedLayers(parsedLayers)
 	cobra.CheckErr(err)
 
 	index := ps["index"].(string)
 
-	gp.AddRowMiddleware(
+	gp.(*middlewares.TableProcessor).AddRowMiddleware(
 		row.NewReorderColumnOrderMiddleware([]string{"field", "type", "fields"}),
 	)
 
