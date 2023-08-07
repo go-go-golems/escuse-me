@@ -21,7 +21,7 @@ import (
 )
 
 type InfoCommand struct {
-	description *cmds.CommandDescription
+	*cmds.CommandDescription
 }
 
 func NewInfoCommand() (*InfoCommand, error) {
@@ -36,7 +36,7 @@ func NewInfoCommand() (*InfoCommand, error) {
 	}
 
 	return &InfoCommand{
-		description: cmds.NewCommandDescription(
+		CommandDescription: cmds.NewCommandDescription(
 			"info",
 			cmds.WithShort("Prints information about the ES server"),
 			cmds.WithFlags(
@@ -53,10 +53,6 @@ func NewInfoCommand() (*InfoCommand, error) {
 			),
 		),
 	}, nil
-}
-
-func (i *InfoCommand) Description() *cmds.CommandDescription {
-	return i.description
 }
 
 func (i *InfoCommand) Run(
@@ -113,7 +109,7 @@ func (i *InfoCommand) Run(
 }
 
 type IndicesListCommand struct {
-	description *cmds.CommandDescription
+	*cmds.CommandDescription
 }
 
 func NewIndicesListCommand() (*IndicesListCommand, error) {
@@ -128,7 +124,7 @@ func NewIndicesListCommand() (*IndicesListCommand, error) {
 	}
 
 	return &IndicesListCommand{
-		description: cmds.NewCommandDescription(
+		CommandDescription: cmds.NewCommandDescription(
 			"ls",
 			cmds.WithShort("Prints the list of available ES indices"),
 			cmds.WithFlags(
@@ -145,10 +141,6 @@ func NewIndicesListCommand() (*IndicesListCommand, error) {
 			),
 		),
 	}, nil
-}
-
-func (i *IndicesListCommand) Description() *cmds.CommandDescription {
-	return i.description
 }
 
 func (i *IndicesListCommand) Run(
@@ -207,7 +199,7 @@ func (i *IndicesListCommand) Run(
 }
 
 type IndicesStatsCommand struct {
-	description *cmds.CommandDescription
+	*cmds.CommandDescription
 }
 
 func NewIndicesStatsCommand() (*IndicesStatsCommand, error) {
@@ -226,7 +218,7 @@ func NewIndicesStatsCommand() (*IndicesStatsCommand, error) {
 	}
 
 	return &IndicesStatsCommand{
-		description: cmds.NewCommandDescription(
+		CommandDescription: cmds.NewCommandDescription(
 			"stats",
 			cmds.WithShort("Prints stats about indices"),
 			cmds.WithFlags(
@@ -249,10 +241,6 @@ func NewIndicesStatsCommand() (*IndicesStatsCommand, error) {
 			),
 		),
 	}, nil
-}
-
-func (i *IndicesStatsCommand) Description() *cmds.CommandDescription {
-	return i.description
 }
 
 func (i *IndicesStatsCommand) Run(
@@ -297,7 +285,7 @@ func (i *IndicesStatsCommand) Run(
 }
 
 type IndicesGetMappingCommand struct {
-	description *cmds.CommandDescription
+	*cmds.CommandDescription
 }
 
 func NewIndicesGetMappingCommand() (*IndicesGetMappingCommand, error) {
@@ -317,7 +305,7 @@ func NewIndicesGetMappingCommand() (*IndicesGetMappingCommand, error) {
 	}
 
 	return &IndicesGetMappingCommand{
-		description: cmds.NewCommandDescription(
+		CommandDescription: cmds.NewCommandDescription(
 			"mappings",
 			cmds.WithShort("Prints indices mappings"),
 			cmds.WithFlags(
@@ -340,10 +328,6 @@ func NewIndicesGetMappingCommand() (*IndicesGetMappingCommand, error) {
 			),
 		),
 	}, nil
-}
-
-func (i *IndicesGetMappingCommand) Description() *cmds.CommandDescription {
-	return i.description
 }
 
 func (i *IndicesGetMappingCommand) Run(
