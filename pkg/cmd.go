@@ -40,7 +40,7 @@ type EscuseMeCommandDescription struct {
 type ESClientFactory func(map[string]*layers.ParsedParameterLayer) (*elasticsearch.Client, error)
 
 type ElasticSearchCommand struct {
-	description   *cmds.CommandDescription
+	*cmds.CommandDescription
 	Query         string
 	clientFactory ESClientFactory
 }
@@ -57,9 +57,9 @@ func NewElasticSearchCommand(
 	description.Layers = append(description.Layers, glazedParameterLayer)
 
 	return &ElasticSearchCommand{
-		description:   description,
-		clientFactory: clientFactory,
-		Query:         query,
+		CommandDescription: description,
+		clientFactory:      clientFactory,
+		Query:              query,
 	}, nil
 }
 
@@ -105,10 +105,6 @@ func (esc *ElasticSearchCommand) Run(
 
 	err = esc.RunQueryIntoGlaze(ctx, es, ps, gp)
 	return err
-}
-
-func (esc *ElasticSearchCommand) Description() *cmds.CommandDescription {
-	return esc.description
 }
 
 func (esc *ElasticSearchCommand) RenderQuery(parameters map[string]interface{}) (string, error) {
@@ -373,7 +369,7 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 					for _, alias := range aliases_ {
 						alias.Source = fileName
 
-						alias.Parents = append(esc.description.Parents, esc.description.Name)
+						alias.Parents = append(esc.Parents, esc.Name)
 						aliases = append(aliases, alias)
 					}
 				}

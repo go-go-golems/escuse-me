@@ -16,14 +16,13 @@ import (
 //
 // There is a similar command in sqleton too
 
-type QueriesCommand struct {
-	description *glazed_cmds.CommandDescription
-	queries     []*ElasticSearchCommand
-	aliases     []*alias.CommandAlias
-}
+// NOTE(manuel, 2023-08-08) Actually this is now almost clay repo list, except that one doesn't output aliases
+// nor does it print out queries per se.
 
-func (q *QueriesCommand) Description() *glazed_cmds.CommandDescription {
-	return q.description
+type QueriesCommand struct {
+	*glazed_cmds.CommandDescription
+	queries []*ElasticSearchCommand
+	aliases []*alias.CommandAlias
 }
 
 func (q *QueriesCommand) Run(
@@ -78,14 +77,14 @@ func NewQueriesCommand(
 	}
 
 	options_ := append([]glazed_cmds.CommandDescriptionOption{
-		glazed_cmds.WithShort("Commands related to sqleton queries"),
+		glazed_cmds.WithShort("Commands related to escuse-me queries"),
 		glazed_cmds.WithLayers(glazeParameterLayer),
 	}, options...)
 
 	return &QueriesCommand{
 		queries: allQueries,
 		aliases: aliases,
-		description: glazed_cmds.NewCommandDescription(
+		CommandDescription: glazed_cmds.NewCommandDescription(
 			"queries",
 			options_...,
 		),

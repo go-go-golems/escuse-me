@@ -12,7 +12,7 @@ import (
 var esFlagsYaml []byte
 
 type EsParameterLayer struct {
-	*layers.ParameterLayerImpl
+	*layers.ParameterLayerImpl `yaml:",inline"`
 }
 
 type EsClientSettings struct {

@@ -4,8 +4,8 @@ go 1.19
 
 require (
 	github.com/elastic/go-elasticsearch/v8 v8.6.0
-	github.com/go-go-golems/clay v0.0.18
-	github.com/go-go-golems/glazed v0.3.4
+	github.com/go-go-golems/clay v0.0.19
+	github.com/go-go-golems/glazed v0.4.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.29.0
 	github.com/spf13/cobra v1.6.1
@@ -78,7 +78,6 @@ require (
 	go.mongodb.org/mongo-driver v1.11.3 // indirect
 	golang.org/x/crypto v0.5.0 // indirect
 	golang.org/x/net v0.5.0 // indirect
-	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/text v0.6.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
