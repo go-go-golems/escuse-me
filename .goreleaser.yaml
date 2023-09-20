@@ -30,7 +30,7 @@ brews:
   - name: escuse-me
     description: "Escuse-me is a tool for querying elasticsearch"
     homepage: "https://github.com/go-go-golems/escuse-me"
-    tap:
+    repository:
       owner: go-go-golems
       name: homebrew-go-go-go
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
