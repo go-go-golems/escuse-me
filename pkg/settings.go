@@ -41,7 +41,7 @@ func (ep *EsParameterLayer) ParseFlagsFromCobraCommand(
 	}
 
 	// now load from flag overrides
-	ps2, err := parameters.GatherFlagsFromCobraCommand(cmd, ep.Flags, true, ep.Prefix)
+	ps2, err := parameters.GatherFlagsFromCobraCommand(cmd, ep.Flags, true, false, ep.Prefix)
 	if err != nil {
 		return nil, err
 	}
