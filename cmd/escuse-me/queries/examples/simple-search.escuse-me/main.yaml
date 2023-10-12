@@ -23,6 +23,9 @@ flags:
       - special_features
       - brand_name
     help: Fields to return from ES index
+  - name: additional_source_fields
+    type: stringList
+    help: Additional fields to return from ES index
   - name: types
     type: stringList
     default:
