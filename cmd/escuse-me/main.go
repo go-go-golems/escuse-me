@@ -175,6 +175,7 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	if !ok {
 		return fmt.Errorf("could not cast commands to ElasticSearchCommand")
 	}
+
 	queriesCommand, err := pkg.NewQueriesCommand(esCommands, aliases)
 	if err != nil {
 		return err

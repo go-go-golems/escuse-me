@@ -248,6 +248,12 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 ) ([]cmds.Command, []*alias.CommandAlias, error) {
 	mainFilePath := filepath.Join(dir, "main.yaml")
 
+	parents := loaders.GetParentsFromDir(dir)
+	// strip last path element from parents
+	if len(parents) > 0 {
+		parents = parents[:len(parents)-1]
+	}
+
 	s, err := f.Open(mainFilePath)
 	// skip file does not exist
 	if err != nil {
@@ -305,14 +311,17 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 	}
 
 	options_ := []cmds.CommandDescriptionOption{
+		cmds.WithName(escd.Name),
 		cmds.WithShort(escd.Short),
 		cmds.WithLong(escd.Long),
 		cmds.WithFlags(escd.Flags...),
 		cmds.WithArguments(escd.Arguments...),
+		cmds.WithParents(parents...),
 		cmds.WithLayout(&layout.Layout{
 			Sections: escd.Layout,
 		}),
 	}
+	options_ = append(options_, options...)
 
 	description := cmds.NewCommandDescription(
 		escd.Name,
@@ -322,10 +331,6 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromDir(
 	esc, err := NewElasticSearchCommand(description, escl.clientFactory, queryTemplate)
 	if err != nil {
 		return nil, nil, err
-	}
-
-	for _, option := range options {
-		option(esc.Description())
 	}
 
 	aliases := []*alias.CommandAlias{}
