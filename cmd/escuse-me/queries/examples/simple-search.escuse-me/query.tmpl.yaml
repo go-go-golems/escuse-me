@@ -1,5 +1,6 @@
 _source:
 {{ .source_fields | toYaml | indentBlock 2 | trimRightSpace }}
+{{if .additional_source_fields}}{{ .additional_source_fields | toYaml | indentBlock 2 | trimRightSpace }}{{end}}
 from: {{ .from }}
 query:
   bool:
