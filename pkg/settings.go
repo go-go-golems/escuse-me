@@ -3,6 +3,7 @@ package pkg
 import (
 	_ "embed"
 	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/go-go-golems/glazed/pkg/cli"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
 	"github.com/spf13/cobra"
@@ -34,22 +35,7 @@ type EsClientSettings struct {
 func (ep *EsParameterLayer) ParseFlagsFromCobraCommand(
 	cmd *cobra.Command,
 ) (map[string]interface{}, error) {
-	// actually hijack and load everything from viper instead of cobra...
-	ps, err := parameters.GatherFlagsFromViper(ep.Flags, false, ep.Prefix)
-	if err != nil {
-		return nil, err
-	}
-
-	// now load from flag overrides
-	ps2, err := parameters.GatherFlagsFromCobraCommand(cmd, ep.Flags, true, false, ep.Prefix)
-	if err != nil {
-		return nil, err
-	}
-	for k, v := range ps2 {
-		ps[k] = v
-	}
-
-	return ps, nil
+	return cli.ParseFlagsFromViperAndCobraCommand(cmd, ep.ParameterLayerImpl)
 }
 
 func NewESParameterLayer(options ...layers.ParameterLayerOptions) (*EsParameterLayer, error) {

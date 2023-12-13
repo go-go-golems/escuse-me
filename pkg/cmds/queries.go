@@ -1,7 +1,8 @@
-package pkg
+package cmds
 
 import (
 	"context"
+	"github.com/go-go-golems/escuse-me/pkg"
 	glazed_cmds "github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/alias"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
@@ -21,7 +22,7 @@ import (
 
 type QueriesCommand struct {
 	*glazed_cmds.CommandDescription
-	queries []*ElasticSearchCommand
+	queries []*pkg.ElasticSearchCommand
 	aliases []*alias.CommandAlias
 }
 
@@ -62,7 +63,7 @@ func (q *QueriesCommand) Run(
 }
 
 func NewQueriesCommand(
-	allQueries []*ElasticSearchCommand,
+	allQueries []*pkg.ElasticSearchCommand,
 	aliases []*alias.CommandAlias,
 	options ...glazed_cmds.CommandDescriptionOption,
 ) (*QueriesCommand, error) {
