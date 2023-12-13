@@ -57,7 +57,7 @@ func main() {
 		}
 		aliasOptions := []alias.Option{}
 		fs := os.DirFS(path)
-		cmds, _, err := loader.LoadCommandsFromFS(
+		cmds, err := loader.LoadCommandsFromFS(
 			fs, ".",
 			options, aliasOptions,
 		)

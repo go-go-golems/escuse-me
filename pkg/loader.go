@@ -31,7 +31,6 @@ type ElasticSearchCommandLoader struct {
 	clientFactory ESClientFactory
 }
 
-var _ loaders.YAMLCommandWithFSLoader = (*ElasticSearchCommandLoader)(nil)
 var _ loaders.FSCommandLoader = (*ElasticSearchCommandLoader)(nil)
 
 func NewElasticSearchCommandLoader(
@@ -42,20 +41,12 @@ func NewElasticSearchCommandLoader(
 	}
 }
 
-func (escl *ElasticSearchCommandLoader) LoadCommandAliasFromYAMLWithDir(
-	s io.Reader,
-	f fs.FS, dir string,
-	options ...alias.Option,
-) ([]*alias.CommandAlias, error) {
-	return loaders.LoadCommandAliasFromYAML(s, options...)
-}
-
-func (escl *ElasticSearchCommandLoader) LoadCommandFromYAMLWithDir(
+func (escl *ElasticSearchCommandLoader) LoadCommandFromReaderWithDir(
 	s io.Reader,
 	f fs.FS,
 	dir string,
-	options ...cmds.CommandDescriptionOption,
-	// aliasOptions []alias.Option,
+	options []cmds.CommandDescriptionOption,
+	aliasOptions []alias.Option,
 ) ([]cmds.Command, error) {
 	parents := loaders.GetParentsFromDir(dir)
 	// strip last path element from parents
@@ -157,9 +148,7 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromYAMLWithDir(
 						}
 					}(s)
 
-					// TODO(manuel, 2023-12-13) Pass alias options
-					aliasOptions := []alias.Option{}
-					aliases_, err := escl.LoadCommandAliasFromYAMLWithDir(s, f, dir, aliasOptions...)
+					aliases_, err := loaders.LoadCommandAliasFromYAML(s, aliasOptions...)
 					if err != nil {
 						return nil, err
 					}
@@ -185,9 +174,8 @@ func (l *ElasticSearchCommandLoader) LoadCommandsFromFS(
 	entryName string, // entry can be a dir or a file name
 	options []cmds.CommandDescriptionOption,
 	aliasOptions []alias.Option,
-) ([]cmds.Command, []*alias.CommandAlias, error) {
+) ([]cmds.Command, error) {
 	var commands []cmds.Command
-	var aliases []*alias.CommandAlias
 
 	isDir := false
 	// check if entry is a directory
@@ -195,7 +183,7 @@ func (l *ElasticSearchCommandLoader) LoadCommandsFromFS(
 	if err != nil {
 		// skip file does not exist
 		if _, ok := err.(*fs.PathError); !ok {
-			return nil, nil, err
+			return nil, err
 		}
 	} else {
 		isDir = fi.IsDir()
@@ -206,31 +194,30 @@ func (l *ElasticSearchCommandLoader) LoadCommandsFromFS(
 			r, err := f.Open(path.Join(entryName, "main.yaml"))
 			if err != nil {
 				// we don't allow nesting in .escuse-me dirs
-				return nil, nil, errors.Wrapf(err, "Could not open main.yaml file for command %s", entryName)
+				return nil, errors.Wrapf(err, "Could not open main.yaml file for command %s", entryName)
 			}
 			defer func(r fs.File) {
 				_ = r.Close()
 			}(r)
-			allCmds, err := l.LoadCommandFromYAMLWithDir(r, f, entryName, options...)
+			allCmds, err := l.LoadCommandFromReaderWithDir(r, f, entryName, options, aliasOptions)
 			if err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 
 			cmds := []cmds.Command{}
-			aliases := []*alias.CommandAlias{}
 			for _, cmd := range allCmds {
 				alias, ok := cmd.(*alias.CommandAlias)
 				if ok {
-					aliases = append(aliases, alias)
+					cmds = append(cmds, alias)
 				} else {
 					cmds = append(cmds, cmd)
 				}
 			}
-			return cmds, aliases, nil
+			return cmds, nil
 		}
 		entries, err := fs.ReadDir(f, entryName)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		for _, entry := range entries {
 			// skip hidden files
@@ -239,18 +226,17 @@ func (l *ElasticSearchCommandLoader) LoadCommandsFromFS(
 			}
 			fileName := filepath.Join(entryName, entry.Name())
 			if entry.IsDir() {
-				subCommands, subAliases, err := l.LoadCommandsFromFS(f, fileName, options, aliasOptions)
+				subCommands, err := l.LoadCommandsFromFS(f, fileName, options, aliasOptions)
 				if err != nil {
-					return nil, nil, err
+					return nil, err
 				}
 				commands = append(commands, subCommands...)
-				aliases = append(aliases, subAliases...)
 			}
 		}
 	}
 
 	// skip anything not directories
 
-	return commands, aliases, nil
+	return commands, nil
 
 }
