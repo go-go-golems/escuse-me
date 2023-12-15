@@ -5,9 +5,13 @@ import (
 	"fmt"
 	clay "github.com/go-go-golems/clay/pkg"
 	"github.com/go-go-golems/clay/pkg/cmds"
+	cmds2 "github.com/go-go-golems/escuse-me/cmd/escuse-me/cmds"
 	"github.com/go-go-golems/escuse-me/pkg"
+	cmds3 "github.com/go-go-golems/escuse-me/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cli"
 	glazed_cmds "github.com/go-go-golems/glazed/pkg/cmds"
+	"github.com/go-go-golems/glazed/pkg/cmds/alias"
+	"github.com/go-go-golems/glazed/pkg/cmds/loaders"
 	"github.com/go-go-golems/glazed/pkg/help"
 	"github.com/go-go-golems/glazed/pkg/helpers/cast"
 	"github.com/spf13/cobra"
@@ -49,9 +53,15 @@ func main() {
 		esParameterLayer, err := pkg.NewESParameterLayer()
 		cobra.CheckErr(err)
 
-		fs := os.DirFS(path)
-		cmds, _, err := loader.LoadCommandFromDir(fs, ".",
+		options := []glazed_cmds.CommandDescriptionOption{
 			glazed_cmds.WithLayers(esParameterLayer),
+		}
+		aliasOptions := []alias.Option{}
+		fs := os.DirFS(path)
+		cmds, err := loaders.LoadCommandsFromFS(
+			fs, ".",
+			loader,
+			options, aliasOptions,
 		)
 		if err != nil {
 			fmt.Printf("Could not load command: %v\n", err)
@@ -176,7 +186,7 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 		return fmt.Errorf("could not cast commands to ElasticSearchCommand")
 	}
 
-	queriesCommand, err := pkg.NewQueriesCommand(esCommands, aliases)
+	queriesCommand, err := cmds3.NewQueriesCommand(esCommands, aliases)
 	if err != nil {
 		return err
 	}
@@ -187,7 +197,7 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 
 	rootCmd.AddCommand(cobraQueriesCommand)
 
-	infoCommand, err := NewInfoCommand()
+	infoCommand, err := cmds2.NewInfoCommand()
 	if err != nil {
 		return err
 	}
@@ -203,7 +213,7 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	}
 	rootCmd.AddCommand(indicesCommand)
 
-	indicesListCommand, err := NewIndicesListCommand()
+	indicesListCommand, err := cmds2.NewIndicesListCommand()
 	if err != nil {
 		return err
 	}
@@ -213,7 +223,7 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	}
 	indicesCommand.AddCommand(indicesListCmd)
 
-	indicesStatsCommand, err := NewIndicesStatsCommand()
+	indicesStatsCommand, err := cmds2.NewIndicesStatsCommand()
 	if err != nil {
 		return err
 	}
@@ -223,7 +233,7 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	}
 	indicesCommand.AddCommand(indicesStatsCmd)
 
-	indicesGetMappingCommand, err := NewIndicesGetMappingCommand()
+	indicesGetMappingCommand, err := cmds2.NewIndicesGetMappingCommand()
 	if err != nil {
 		return err
 	}
