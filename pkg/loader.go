@@ -9,7 +9,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
-	"io"
 	"io/fs"
 	"path"
 	"path/filepath"
@@ -31,7 +30,7 @@ type ElasticSearchCommandLoader struct {
 	clientFactory ESClientFactory
 }
 
-var _ loaders.FSCommandLoader = (*ElasticSearchCommandLoader)(nil)
+var _ loaders.CommandLoader = (*ElasticSearchCommandLoader)(nil)
 
 func NewElasticSearchCommandLoader(
 	clientFactory ESClientFactory,
@@ -41,14 +40,35 @@ func NewElasticSearchCommandLoader(
 	}
 }
 
-func (escl *ElasticSearchCommandLoader) LoadCommandFromReaderWithDir(
-	s io.Reader,
+func (escl *ElasticSearchCommandLoader) IsFileSupported(f fs.FS, fileName string) bool {
+	f_, err := f.Open(fileName)
+	if err != nil {
+		return false
+	}
+	fi, err := f_.Stat()
+	if err != nil {
+		return false
+	}
+
+	return strings.HasSuffix(fileName, ".escuse-me") && fi.IsDir()
+}
+
+func (escl *ElasticSearchCommandLoader) LoadCommands(
 	f fs.FS,
-	dir string,
+	entryName string,
 	options []cmds.CommandDescriptionOption,
 	aliasOptions []alias.Option,
 ) ([]cmds.Command, error) {
-	parents := loaders.GetParentsFromDir(dir)
+	s, err := f.Open(path.Join(entryName, "main.yaml"))
+	if err != nil {
+		// we don't allow nesting in .escuse-me dirs
+		return nil, errors.Wrapf(err, "Could not open main.yaml file for command %s", entryName)
+	}
+	defer func(r fs.File) {
+		_ = r.Close()
+	}(s)
+
+	parents := loaders.GetParentsFromDir(entryName)
 	// strip last path element from parents
 	if len(parents) > 0 {
 		parents = parents[:len(parents)-1]
@@ -58,7 +78,7 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromReaderWithDir(
 		Flags:     []*parameters.ParameterDefinition{},
 		Arguments: []*parameters.ParameterDefinition{},
 	}
-	err := yaml.NewDecoder(s).Decode(escd)
+	err = yaml.NewDecoder(s).Decode(escd)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +100,7 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromReaderWithDir(
 
 	//load query template, if present
 	if escd.QueryTemplate != "" {
-		queryTemplatePath := filepath.Join(dir, escd.QueryTemplate)
+		queryTemplatePath := filepath.Join(entryName, escd.QueryTemplate)
 		s, err := fs.ReadFile(f, queryTemplatePath)
 		if err != nil {
 			return nil, err
@@ -117,7 +137,7 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromReaderWithDir(
 	aliases := []cmds.Command{}
 
 	// check for aliases in alias folder
-	aliasDir := filepath.Join(dir, "alias")
+	aliasDir := filepath.Join(entryName, "alias")
 	fi, err := fs.Stat(f, aliasDir)
 	if err != nil {
 		// skip file does not exist
@@ -167,76 +187,4 @@ func (escl *ElasticSearchCommandLoader) LoadCommandFromReaderWithDir(
 	ret = append(ret, aliases...)
 
 	return ret, nil
-}
-
-func (l *ElasticSearchCommandLoader) LoadCommandsFromFS(
-	f fs.FS,
-	entryName string, // entry can be a dir or a file name
-	options []cmds.CommandDescriptionOption,
-	aliasOptions []alias.Option,
-) ([]cmds.Command, error) {
-	var commands []cmds.Command
-
-	isDir := false
-	// check if entry is a directory
-	fi, err := fs.Stat(f, entryName)
-	if err != nil {
-		// skip file does not exist
-		if _, ok := err.(*fs.PathError); !ok {
-			return nil, err
-		}
-	} else {
-		isDir = fi.IsDir()
-	}
-
-	if isDir {
-		if strings.HasSuffix(entryName, ".escuse-me") {
-			r, err := f.Open(path.Join(entryName, "main.yaml"))
-			if err != nil {
-				// we don't allow nesting in .escuse-me dirs
-				return nil, errors.Wrapf(err, "Could not open main.yaml file for command %s", entryName)
-			}
-			defer func(r fs.File) {
-				_ = r.Close()
-			}(r)
-			allCmds, err := l.LoadCommandFromReaderWithDir(r, f, entryName, options, aliasOptions)
-			if err != nil {
-				return nil, err
-			}
-
-			cmds := []cmds.Command{}
-			for _, cmd := range allCmds {
-				alias, ok := cmd.(*alias.CommandAlias)
-				if ok {
-					cmds = append(cmds, alias)
-				} else {
-					cmds = append(cmds, cmd)
-				}
-			}
-			return cmds, nil
-		}
-		entries, err := fs.ReadDir(f, entryName)
-		if err != nil {
-			return nil, err
-		}
-		for _, entry := range entries {
-			// skip hidden files
-			if strings.HasPrefix(entry.Name(), ".") {
-				continue
-			}
-			fileName := filepath.Join(entryName, entry.Name())
-			if entry.IsDir() {
-				subCommands, err := l.LoadCommandsFromFS(f, fileName, options, aliasOptions)
-				if err != nil {
-					return nil, err
-				}
-				commands = append(commands, subCommands...)
-			}
-		}
-	}
-
-	// skip anything not directories
-
-	return commands, nil
-
 }

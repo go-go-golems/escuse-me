@@ -11,6 +11,7 @@ import (
 	"github.com/go-go-golems/glazed/pkg/cli"
 	glazed_cmds "github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/alias"
+	"github.com/go-go-golems/glazed/pkg/cmds/loaders"
 	"github.com/go-go-golems/glazed/pkg/help"
 	"github.com/go-go-golems/glazed/pkg/helpers/cast"
 	"github.com/spf13/cobra"
@@ -57,8 +58,9 @@ func main() {
 		}
 		aliasOptions := []alias.Option{}
 		fs := os.DirFS(path)
-		cmds, err := loader.LoadCommandsFromFS(
+		cmds, err := loaders.LoadCommandsFromFS(
 			fs, ".",
+			loader,
 			options, aliasOptions,
 		)
 		if err != nil {
