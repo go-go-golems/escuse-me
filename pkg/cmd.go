@@ -31,13 +31,15 @@ type EscuseMeCommandDescription struct {
 	QueryTemplate string `yaml:"queryTemplate,omitempty"`
 }
 
-type ESClientFactory func(map[string]*layers.ParsedParameterLayer) (*elasticsearch.Client, error)
+type ESClientFactory func(*layers.ParsedLayers) (*elasticsearch.Client, error)
 
 type ElasticSearchCommand struct {
 	*cmds.CommandDescription
 	Query         string
 	clientFactory ESClientFactory
 }
+
+var _ cmds.GlazeCommand = &ElasticSearchCommand{}
 
 func NewElasticSearchCommand(
 	description *cmds.CommandDescription,
@@ -57,10 +59,9 @@ func NewElasticSearchCommand(
 	}, nil
 }
 
-func (esc *ElasticSearchCommand) Run(
+func (esc *ElasticSearchCommand) RunIntoGlazeProcessor(
 	ctx context.Context,
-	parsedLayers map[string]*layers.ParsedParameterLayer,
-	ps map[string]interface{},
+	parsedLayers *layers.ParsedLayers,
 	gp middlewares.Processor,
 ) error {
 	es, err := esc.clientFactory(parsedLayers)
@@ -68,23 +69,33 @@ func (esc *ElasticSearchCommand) Run(
 		return errors.Wrapf(err, "Could not create ES client")
 	}
 
+	esHelperSettings := &ESHelperSettings{}
+	err = parsedLayers.InitializeStruct(ESHelpersSlug, esHelperSettings)
+	if err != nil {
+		return err
+	}
+
+	outputParameter, ok := parsedLayers.GetParameter(settings.GlazedSlug, "output")
+	if !ok {
+		return errors.New("Could not find glazed output parameter")
+	}
+	output := outputParameter.Value.(string)
+
 	// TODO(2022-12-21, manuel): Add explain functionality
 	// See: https://github.com/wesen/sqleton/issues/45
-	explain, _ := ps["explain"].(bool)
-	_ = explain
 
-	printQuery, _ := ps["print-query"].(bool)
-	if printQuery {
-		output, _ := ps["output"].(string)
+	ps_ := parsedLayers.GetDataMap()
+
+	if esHelperSettings.PrintQuery {
 		if output == "json" {
-			query, err := esc.RenderQueryToJSON(ps)
+			query, err := esc.RenderQueryToJSON(ps_)
 			if err != nil {
 				return errors.Wrapf(err, "Could not generate query")
 			}
 			fmt.Println(query)
 			return &cmds.ExitWithoutGlazeError{}
 		} else {
-			query, err := esc.RenderQuery(ps)
+			query, err := esc.RenderQuery(ps_)
 			if err != nil {
 				return errors.Wrapf(err, "Could not generate query")
 			}
@@ -97,7 +108,7 @@ func (esc *ElasticSearchCommand) Run(
 		return errors.New("ES client is nil")
 	}
 
-	err = esc.RunQueryIntoGlaze(ctx, es, ps, gp)
+	err = esc.RunQueryIntoGlaze(ctx, es, parsedLayers, gp)
 	return err
 }
 
@@ -123,10 +134,17 @@ func (esc *ElasticSearchCommand) RenderQueryToJSON(parameters map[string]interfa
 func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 	ctx context.Context,
 	es *elasticsearch.Client,
-	parameters map[string]interface{},
+	parsedLayers *layers.ParsedLayers,
 	gp middlewares.Processor,
 ) error {
-	query, err := esc.RenderQueryToJSON(parameters)
+	esHelperSettings := &ESHelperSettings{}
+	err := parsedLayers.InitializeStruct(ESHelpersSlug, esHelperSettings)
+	if err != nil {
+		return err
+	}
+
+	ps_ := parsedLayers.GetDataMap()
+	query, err := esc.RenderQueryToJSON(ps_)
 	if err != nil {
 		return errors.Wrapf(err, "Could not generate query")
 	}
@@ -143,11 +161,9 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 		es.Search.WithTrackTotalHits(true),
 	}
 
-	if explain, ok := parameters["explain"].(bool); ok && explain {
-		os = append(os, es.Search.WithExplain(explain))
-	}
-	if index, ok := parameters["index"].(string); ok {
-		os = append(os, es.Search.WithIndex(index))
+	os = append(os, es.Search.WithExplain(esHelperSettings.Explain))
+	if esHelperSettings.Index != "" {
+		os = append(os, es.Search.WithIndex(esHelperSettings.Index))
 	}
 
 	res, err := es.Search(os...)

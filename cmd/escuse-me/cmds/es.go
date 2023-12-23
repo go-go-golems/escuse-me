@@ -14,13 +14,14 @@ import (
 	"github.com/go-go-golems/glazed/pkg/settings"
 	"github.com/go-go-golems/glazed/pkg/types"
 	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
 	"io"
 )
 
 type InfoCommand struct {
 	*cmds.CommandDescription
 }
+
+var _ cmds.GlazeCommand = &InfoCommand{}
 
 func NewInfoCommand() (*InfoCommand, error) {
 	glazedParameterLayer, err := settings.NewGlazedParameterLayers()
@@ -53,14 +54,25 @@ func NewInfoCommand() (*InfoCommand, error) {
 	}, nil
 }
 
-func (i *InfoCommand) Run(
+type InfoSettings struct {
+	Full bool `glazed.parameter:"full"`
+}
+
+func (i *InfoCommand) RunIntoGlazeProcessor(
 	ctx context.Context,
-	parsedLayers map[string]*layers.ParsedParameterLayer,
-	ps map[string]interface{},
+	parsedLayers *layers.ParsedLayers,
 	gp middlewares.Processor,
 ) error {
+	s := &InfoSettings{}
+	err := parsedLayers.InitializeStruct(layers.DefaultSlug, s)
+	if err != nil {
+		return err
+	}
+
 	es, err := pkg.NewESClientFromParsedLayers(parsedLayers)
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 
 	gp.(*middlewares.TableProcessor).AddRowMiddleware(
 		row.NewReorderColumnOrderMiddleware(
@@ -70,7 +82,9 @@ func (i *InfoCommand) Run(
 
 	clientVersion := elasticsearch.Version
 	res, err := es.Info()
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
@@ -81,15 +95,17 @@ func (i *InfoCommand) Run(
 
 	// read all body
 	body, err := io.ReadAll(res.Body)
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 
 	body_ := types.NewRow()
 	err = json.Unmarshal(body, &body_)
 	if err != nil {
 		return err
 	}
-	full := ps["full"].(bool)
-	if !full {
+
+	if !s.Full {
 		version_, ok := body_.Get("version")
 		if !ok {
 			return errors.New("could not find version in response")

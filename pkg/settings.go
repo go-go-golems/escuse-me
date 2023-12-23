@@ -12,6 +12,8 @@ import (
 //go:embed "flags/es.yaml"
 var esFlagsYaml []byte
 
+const EsConnectionSlug = "es-connection"
+
 type EsParameterLayer struct {
 	*layers.ParameterLayerImpl `yaml:",inline"`
 }
@@ -34,8 +36,8 @@ type EsClientSettings struct {
 
 func (ep *EsParameterLayer) ParseFlagsFromCobraCommand(
 	cmd *cobra.Command,
-) (map[string]interface{}, error) {
-	return cli.ParseFlagsFromViperAndCobraCommand(cmd, ep.ParameterLayerImpl)
+) (*parameters.ParsedParameters, error) {
+	return cli.ParseFlagsFromViperAndCobraCommand(cmd, ep)
 }
 
 func NewESParameterLayer(options ...layers.ParameterLayerOptions) (*EsParameterLayer, error) {
@@ -46,14 +48,9 @@ func NewESParameterLayer(options ...layers.ParameterLayerOptions) (*EsParameterL
 	return &EsParameterLayer{ParameterLayerImpl: ret}, nil
 }
 
-func NewESClientSettingsFromParsedLayers(parsedLayers map[string]*layers.ParsedParameterLayer) (*EsClientSettings, error) {
-	layer, ok := parsedLayers["es-connection"]
-	if !ok {
-		return nil, nil
-	}
-
+func NewESClientSettingsFromParsedLayers(parsedLayers *layers.ParsedLayers) (*EsClientSettings, error) {
 	ret := &EsClientSettings{}
-	err := parameters.InitializeStructFromParameters(ret, layer.Parameters)
+	err := parsedLayers.InitializeStruct(EsConnectionSlug, ret)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +58,7 @@ func NewESClientSettingsFromParsedLayers(parsedLayers map[string]*layers.ParsedP
 }
 
 func NewESClientFromParsedLayers(
-	parsedLayers map[string]*layers.ParsedParameterLayer,
+	parsedLayers *layers.ParsedLayers,
 ) (*elasticsearch.Client, error) {
 	settings, err := NewESClientSettingsFromParsedLayers(parsedLayers)
 	if err != nil {
