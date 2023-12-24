@@ -50,7 +50,7 @@ func NewElasticSearchCommand(
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create Glazed parameter layer")
 	}
-	description.Layers = append(description.Layers, glazedParameterLayer)
+	description.Layers.AppendLayers(glazedParameterLayer)
 
 	return &ElasticSearchCommand{
 		CommandDescription: description,
