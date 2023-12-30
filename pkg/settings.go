@@ -3,10 +3,7 @@ package pkg
 import (
 	_ "embed"
 	"github.com/elastic/go-elasticsearch/v8"
-	"github.com/go-go-golems/glazed/pkg/cli"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
-	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
-	"github.com/spf13/cobra"
 )
 
 //go:embed "flags/es.yaml"
@@ -32,12 +29,6 @@ type EsClientSettings struct {
 	EnableMetrics           bool     `glazed.parameter:"enable-metrics"`
 	EnableDebugLogger       bool     `glazed.parameter:"enable-debug-logger"`
 	EnableCompatibilityMode bool     `glazed.parameter:"enable-compatibility-mode"`
-}
-
-func (ep *EsParameterLayer) ParseFlagsFromCobraCommand(
-	cmd *cobra.Command,
-) (*parameters.ParsedParameters, error) {
-	return cli.ParseFlagsFromViperAndCobraCommand(cmd, ep)
 }
 
 func NewESParameterLayer(options ...layers.ParameterLayerOptions) (*EsParameterLayer, error) {
