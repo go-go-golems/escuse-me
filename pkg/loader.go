@@ -113,7 +113,7 @@ func (escl *ElasticSearchCommandLoader) LoadCommands(
 		cmds.WithLayout(&layout.Layout{
 			Sections: escd.Layout,
 		}),
-		cmds.WithLayers(esHelpersLayer),
+		cmds.WithLayersList(esHelpersLayer),
 	}
 	options_ = append(options_, options...)
 

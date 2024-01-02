@@ -47,7 +47,7 @@ func NewIndicesListCommand() (*IndicesListCommand, error) {
 					parameters.WithDefault(false),
 				),
 			),
-			cmds.WithLayers(
+			cmds.WithLayersList(
 				glazedParameterLayer,
 				esParameterLayer,
 			),
@@ -162,7 +162,7 @@ func NewIndicesStatsCommand() (*IndicesStatsCommand, error) {
 					parameters.WithDefault(false),
 				),
 			),
-			cmds.WithLayers(
+			cmds.WithLayersList(
 				glazedParameterLayer,
 				esParameterLayer,
 			),
@@ -263,7 +263,7 @@ func NewIndicesGetMappingCommand() (*IndicesGetMappingCommand, error) {
 					parameters.WithDefault(false),
 				),
 			),
-			cmds.WithLayers(
+			cmds.WithLayersList(
 				glazedParameterLayer,
 				esParameterLayer,
 			),

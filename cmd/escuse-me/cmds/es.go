@@ -46,7 +46,7 @@ func NewInfoCommand() (*InfoCommand, error) {
 					parameters.WithDefault(false),
 				),
 			),
-			cmds.WithLayers(
+			cmds.WithLayersList(
 				glazedParameterLayer,
 				esParameterLayer,
 			),

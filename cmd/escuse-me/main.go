@@ -54,7 +54,7 @@ func main() {
 		cobra.CheckErr(err)
 
 		options := []glazed_cmds.CommandDescriptionOption{
-			glazed_cmds.WithLayers(esParameterLayer),
+			glazed_cmds.WithLayersList(esParameterLayer),
 		}
 		aliasOptions := []alias.Option{}
 		fs := os.DirFS(path)

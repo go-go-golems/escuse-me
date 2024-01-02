@@ -80,7 +80,7 @@ func NewQueriesCommand(
 
 	options_ := append([]glazed_cmds.CommandDescriptionOption{
 		glazed_cmds.WithShort("Commands related to escuse-me queries"),
-		glazed_cmds.WithLayers(glazeParameterLayer),
+		glazed_cmds.WithLayersList(glazeParameterLayer),
 	}, options...)
 
 	return &QueriesCommand{
