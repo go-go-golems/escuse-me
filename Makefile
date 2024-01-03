@@ -40,6 +40,7 @@ release:
 bump-glazed:
 	go get -u -t -x github.com/go-go-golems/glazed@latest
 	go get -u -t -x github.com/go-go-golems/clay@latest
+	go get -u -t -x github.com/go-go-golems/parka@latest
 	go mod tidy
 
 exhaustive:
