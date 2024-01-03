@@ -83,19 +83,6 @@ func (escl *ElasticSearchCommandLoader) LoadCommands(
 		return nil, err
 	}
 
-	// Add print query and explain parameters
-	escd.Flags = append(escd.Flags, &parameters.ParameterDefinition{
-		Name:     "print-query",
-		Help:     "Print the query that is generated",
-		Type:     "bool",
-		Required: false,
-	}, &parameters.ParameterDefinition{
-		Name:     "explain",
-		Help:     "Explain the query",
-		Type:     "bool",
-		Required: false,
-	})
-
 	queryTemplate := ""
 
 	//load query template, if present
@@ -111,6 +98,11 @@ func (escl *ElasticSearchCommandLoader) LoadCommands(
 		return nil, errors.New("No query template specified")
 	}
 
+	esHelpersLayer, err := NewESHelpersParameterLayer()
+	if err != nil {
+		return nil, err
+	}
+
 	options_ := []cmds.CommandDescriptionOption{
 		cmds.WithName(escd.Name),
 		cmds.WithShort(escd.Short),
@@ -121,6 +113,7 @@ func (escl *ElasticSearchCommandLoader) LoadCommands(
 		cmds.WithLayout(&layout.Layout{
 			Sections: escd.Layout,
 		}),
+		cmds.WithLayersList(esHelpersLayer),
 	}
 	options_ = append(options_, options...)
 

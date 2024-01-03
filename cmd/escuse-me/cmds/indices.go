@@ -13,7 +13,6 @@ import (
 	"github.com/go-go-golems/glazed/pkg/settings"
 	"github.com/go-go-golems/glazed/pkg/types"
 	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
 	"io"
 	"sort"
 	"strings"
@@ -22,6 +21,8 @@ import (
 type IndicesListCommand struct {
 	*cmds.CommandDescription
 }
+
+var _ cmds.GlazeCommand = &IndicesListCommand{}
 
 func NewIndicesListCommand() (*IndicesListCommand, error) {
 	glazedParameterLayer, err := settings.NewGlazedParameterLayers()
@@ -46,7 +47,7 @@ func NewIndicesListCommand() (*IndicesListCommand, error) {
 					parameters.WithDefault(false),
 				),
 			),
-			cmds.WithLayers(
+			cmds.WithLayersList(
 				glazedParameterLayer,
 				esParameterLayer,
 			),
@@ -54,14 +55,24 @@ func NewIndicesListCommand() (*IndicesListCommand, error) {
 	}, nil
 }
 
-func (i *IndicesListCommand) Run(
+type IndicesListSettings struct {
+	Full bool `glazed.parameter:"full"`
+}
+
+func (i *IndicesListCommand) RunIntoGlazeProcessor(
 	ctx context.Context,
-	parsedLayers map[string]*layers.ParsedParameterLayer,
-	ps map[string]interface{},
+	parsedLayers *layers.ParsedLayers,
 	gp middlewares.Processor,
 ) error {
+	s := &IndicesListSettings{}
+	err := parsedLayers.InitializeStruct(layers.DefaultSlug, s)
+	if err != nil {
+		return err
+	}
 	es, err := pkg.NewESClientFromParsedLayers(parsedLayers)
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 
 	gp.(*middlewares.TableProcessor).AddRowMiddleware(
 		row.NewReorderColumnOrderMiddleware(
@@ -70,7 +81,9 @@ func (i *IndicesListCommand) Run(
 	)
 
 	res, err := es.Cat.Indices(es.Cat.Indices.WithFormat("json"))
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
@@ -81,16 +94,17 @@ func (i *IndicesListCommand) Run(
 
 	// read all body
 	body, err := io.ReadAll(res.Body)
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 
 	body_ := []types.Row{}
 	err = json.Unmarshal(body, &body_)
 	if err != nil {
 		return err
 	}
-	full := ps["full"].(bool)
 	for _, index := range body_ {
-		if !full {
+		if !s.Full {
 			health_, _ := index.Get("health")
 			status_, _ := index.Get("status")
 			index_, _ := index.Get("index")
@@ -112,6 +126,8 @@ func (i *IndicesListCommand) Run(
 type IndicesStatsCommand struct {
 	*cmds.CommandDescription
 }
+
+var _ cmds.GlazeCommand = &IndicesStatsCommand{}
 
 func NewIndicesStatsCommand() (*IndicesStatsCommand, error) {
 	glazedParameterLayer, err := settings.NewGlazedParameterLayers(
@@ -146,7 +162,7 @@ func NewIndicesStatsCommand() (*IndicesStatsCommand, error) {
 					parameters.WithDefault(false),
 				),
 			),
-			cmds.WithLayers(
+			cmds.WithLayersList(
 				glazedParameterLayer,
 				esParameterLayer,
 			),
@@ -154,21 +170,33 @@ func NewIndicesStatsCommand() (*IndicesStatsCommand, error) {
 	}, nil
 }
 
-func (i *IndicesStatsCommand) Run(
+type IndicesStatsSettings struct {
+	Index string `glazed.parameter:"index"`
+	Full  bool   `glazed.parameter:"full"`
+}
+
+func (i *IndicesStatsCommand) RunIntoGlazeProcessor(
 	ctx context.Context,
-	parsedLayers map[string]*layers.ParsedParameterLayer,
-	ps map[string]interface{},
+	parsedLayers *layers.ParsedLayers,
 	gp middlewares.Processor,
 ) error {
-	es, err := pkg.NewESClientFromParsedLayers(parsedLayers)
-	cobra.CheckErr(err)
+	s := &IndicesStatsSettings{}
+	err := parsedLayers.InitializeStruct(layers.DefaultSlug, s)
+	if err != nil {
+		return err
+	}
 
-	index := ps["index"].(string)
+	es, err := pkg.NewESClientFromParsedLayers(parsedLayers)
+	if err != nil {
+		return err
+	}
 
 	res, err := es.Indices.Stats(
-		es.Indices.Stats.WithIndex(index),
+		es.Indices.Stats.WithIndex(s.Index),
 	)
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
@@ -179,15 +207,15 @@ func (i *IndicesStatsCommand) Run(
 
 	// read all body
 	body, err := io.ReadAll(res.Body)
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 
 	body_ := types.NewRow()
 	err = json.Unmarshal(body, &body_)
 	if err != nil {
 		return err
 	}
-	full := ps["full"].(bool)
-	_ = full
 	err = gp.AddRow(ctx, body_)
 	if err != nil {
 		return err
@@ -198,6 +226,8 @@ func (i *IndicesStatsCommand) Run(
 type IndicesGetMappingCommand struct {
 	*cmds.CommandDescription
 }
+
+var _ cmds.GlazeCommand = &IndicesGetMappingCommand{}
 
 func NewIndicesGetMappingCommand() (*IndicesGetMappingCommand, error) {
 	glazedParameterLayer, err := settings.NewGlazedParameterLayers(
@@ -233,7 +263,7 @@ func NewIndicesGetMappingCommand() (*IndicesGetMappingCommand, error) {
 					parameters.WithDefault(false),
 				),
 			),
-			cmds.WithLayers(
+			cmds.WithLayersList(
 				glazedParameterLayer,
 				esParameterLayer,
 			),
@@ -241,25 +271,36 @@ func NewIndicesGetMappingCommand() (*IndicesGetMappingCommand, error) {
 	}, nil
 }
 
-func (i *IndicesGetMappingCommand) Run(
+type IndicesGetMappingSettings struct {
+	Index string `glazed.parameter:"index"`
+	Full  bool   `glazed.parameter:"full"`
+}
+
+func (i *IndicesGetMappingCommand) RunIntoGlazeProcessor(
 	ctx context.Context,
-	parsedLayers map[string]*layers.ParsedParameterLayer,
-	ps map[string]interface{},
+	parsedLayers *layers.ParsedLayers,
 	gp middlewares.Processor,
 ) error {
+	s := &IndicesGetMappingSettings{}
+	err := parsedLayers.InitializeStruct(layers.DefaultSlug, s)
+	if err != nil {
+		return err
+	}
 	es, err := pkg.NewESClientFromParsedLayers(parsedLayers)
-	cobra.CheckErr(err)
-
-	index := ps["index"].(string)
+	if err != nil {
+		return err
+	}
 
 	gp.(*middlewares.TableProcessor).AddRowMiddleware(
 		row.NewReorderColumnOrderMiddleware([]string{"field", "type", "fields"}),
 	)
 
 	res, err := es.Indices.GetMapping(
-		es.Indices.GetMapping.WithIndex(index),
+		es.Indices.GetMapping.WithIndex(s.Index),
 	)
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
@@ -270,7 +311,9 @@ func (i *IndicesGetMappingCommand) Run(
 
 	// read all body
 	body, err := io.ReadAll(res.Body)
-	cobra.CheckErr(err)
+	if err != nil {
+		return err
+	}
 
 	body_ := map[string]interface{}{}
 	err = json.Unmarshal(body, &body_)
@@ -278,18 +321,17 @@ func (i *IndicesGetMappingCommand) Run(
 		return err
 	}
 
-	mapping, ok := body_[index]
+	mapping, ok := body_[s.Index]
 	if !ok {
 		return errors.New("could not find mapping")
 	}
-	full := ps["full"].(bool)
 
 	m, ok := mapping.(map[string]interface{})
 	if !ok {
 		return errors.New("could not find mapping")
 	}
 
-	if full {
+	if s.Full {
 		err = gp.AddRow(ctx, types.NewRowFromMap(m))
 		if err != nil {
 			return err

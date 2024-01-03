@@ -25,7 +25,7 @@ type ServeCommand struct {
 
 func (s *ServeCommand) runWithConfigFile(
 	ctx context.Context,
-	parsedLayers map[string]*layers.ParsedParameterLayer,
+	parsedLayers map[string]*layers.ParsedLayer,
 	ps map[string]interface{},
 	configFilePath string,
 	serverOptions []server.ServerOption,
@@ -35,7 +35,7 @@ func (s *ServeCommand) runWithConfigFile(
 
 func (s *ServeCommand) Run(
 	ctx context.Context,
-	parsedLayers map[string]*layers.ParsedParameterLayer,
+	parsedLayers map[string]*layers.ParsedLayer,
 	ps map[string]interface{},
 ) error {
 	// now set up parka server
@@ -96,7 +96,7 @@ func (s *ServeCommand) Run(
 
 	commandDirHandlerOptions := []command_dir.CommandDirHandlerOption{
 		command_dir.WithTemplateLookup(datatables.NewDataTablesLookupTemplate()),
-		command_dir.WithOverridesAndDefaultsOptions(
+		command_dir.WithParameterFilterOptions(
 		// ... override with ES server settings
 		),
 		command_dir.WithDefaultTemplateName("data-tables.tmpl.html"),

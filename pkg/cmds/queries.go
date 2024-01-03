@@ -26,10 +26,11 @@ type QueriesCommand struct {
 	aliases []*alias.CommandAlias
 }
 
-func (q *QueriesCommand) Run(
+var _ glazed_cmds.GlazeCommand = &QueriesCommand{}
+
+func (q *QueriesCommand) RunIntoGlazeProcessor(
 	ctx context.Context,
-	parsedLayers map[string]*layers.ParsedParameterLayer,
-	ps map[string]interface{},
+	parsedLayers *layers.ParsedLayers,
 	gp middlewares.Processor,
 ) error {
 	for _, query := range q.queries {
@@ -79,7 +80,7 @@ func NewQueriesCommand(
 
 	options_ := append([]glazed_cmds.CommandDescriptionOption{
 		glazed_cmds.WithShort("Commands related to escuse-me queries"),
-		glazed_cmds.WithLayers(glazeParameterLayer),
+		glazed_cmds.WithLayersList(glazeParameterLayer),
 	}, options...)
 
 	return &QueriesCommand{
