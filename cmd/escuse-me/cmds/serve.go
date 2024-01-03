@@ -96,7 +96,7 @@ func (s *ServeCommand) Run(
 
 	commandDirHandlerOptions := []command_dir.CommandDirHandlerOption{
 		command_dir.WithTemplateLookup(datatables.NewDataTablesLookupTemplate()),
-		command_dir.WithOverridesAndDefaultsOptions(
+		command_dir.WithParameterFilterOptions(
 		// ... override with ES server settings
 		),
 		command_dir.WithDefaultTemplateName("data-tables.tmpl.html"),
