@@ -6,7 +6,7 @@ require (
 	github.com/elastic/go-elasticsearch/v8 v8.6.0
 	github.com/go-go-golems/clay v0.1.6
 	github.com/go-go-golems/glazed v0.5.5
-	github.com/go-go-golems/parka v0.5.0
+	github.com/go-go-golems/parka v0.5.1
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.30.0
 	github.com/spf13/cobra v1.7.0
