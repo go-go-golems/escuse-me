@@ -1,4 +1,4 @@
-package pkg
+package layers
 
 import (
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"

@@ -6,8 +6,8 @@ import (
 	clay "github.com/go-go-golems/clay/pkg"
 	"github.com/go-go-golems/clay/pkg/cmds"
 	cmds2 "github.com/go-go-golems/escuse-me/cmd/escuse-me/cmds"
-	"github.com/go-go-golems/escuse-me/pkg"
-	cmds3 "github.com/go-go-golems/escuse-me/pkg/cmds"
+	es_cmds "github.com/go-go-golems/escuse-me/pkg/cmds"
+	"github.com/go-go-golems/escuse-me/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cli"
 	glazed_cmds "github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/alias"
@@ -33,8 +33,8 @@ var rootCmd = &cobra.Command{
 func main() {
 	if len(os.Args) >= 3 && os.Args[1] == "run-command" && os.Args[2] != "--help" {
 		// load the command
-		clientFactory := pkg.NewESClientFromParsedLayers
-		loader := pkg.NewElasticSearchCommandLoader(clientFactory)
+		clientFactory := layers.NewESClientFromParsedLayers
+		loader := es_cmds.NewElasticSearchCommandLoader(clientFactory)
 		fi, err := os.Stat(os.Args[2])
 		cobra.CheckErr(err)
 		if !fi.IsDir() {
@@ -50,7 +50,7 @@ func main() {
 			path = wd + "/" + path
 		}
 
-		esParameterLayer, err := pkg.NewESParameterLayer()
+		esParameterLayer, err := layers.NewESParameterLayer()
 		cobra.CheckErr(err)
 
 		options := []glazed_cmds.CommandDescriptionOption{
@@ -72,13 +72,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		glazeCommand, ok := cmds[0].(glazed_cmds.GlazeCommand)
-		if !ok {
-			fmt.Printf("Expected GlazeCommand, got %T", cmds[0])
-			os.Exit(1)
-		}
-
-		cobraCommand, err := cli.BuildCobraCommandFromGlazeCommand(glazeCommand)
+		cobraCommand, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(cmds[0])
 		if err != nil {
 			fmt.Printf("Could not build cobra command: %v\n", err)
 			os.Exit(1)
@@ -140,13 +134,14 @@ func initRootCmd() (*help.HelpSystem, error) {
 	return helpSystem, nil
 
 }
+
 func initAllCommands(helpSystem *help.HelpSystem) error {
 	repositories := viper.GetStringSlice("repositories")
 
 	defaultDirectory := "$HOME/.escuse-me/queries"
 	repositories = append(repositories, defaultDirectory)
 
-	esParameterLayer, err := pkg.NewESParameterLayer()
+	esParameterLayer, err := layers.NewESParameterLayer()
 	if err != nil {
 		return err
 	}
@@ -163,10 +158,10 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 		cmds.WithAdditionalLayers(esParameterLayer),
 	)
 
-	clientFactory := pkg.NewESClientFromParsedLayers
-	loader := pkg.NewElasticSearchCommandLoader(clientFactory)
+	clientFactory := layers.NewESClientFromParsedLayers
+	loader := es_cmds.NewElasticSearchCommandLoader(clientFactory)
 
-	commandLoader := cmds.NewCommandLoader[*pkg.ElasticSearchCommand](locations)
+	commandLoader := cmds.NewCommandLoader[*es_cmds.ElasticSearchCommand](locations)
 	commands, aliases, err := commandLoader.LoadCommands(loader, helpSystem)
 	if err != nil {
 		return err
@@ -176,17 +171,19 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	if !ok {
 		return fmt.Errorf("could not cast commands to GlazeCommand")
 	}
-	err = cli.AddCommandsToRootCommand(rootCmd, commands_, aliases)
+	err = cli.AddCommandsToRootCommand(rootCmd, commands_, aliases,
+		cli.WithCobraMiddlewaresFunc(es_cmds.GetCobraCommandEscuseMeMiddlewares),
+	)
 	if err != nil {
 		return err
 	}
 
-	esCommands, ok := cast.CastList[*pkg.ElasticSearchCommand](commands)
+	esCommands, ok := cast.CastList[*es_cmds.ElasticSearchCommand](commands)
 	if !ok {
 		return fmt.Errorf("could not cast commands to ElasticSearchCommand")
 	}
 
-	queriesCommand, err := cmds3.NewQueriesCommand(esCommands, aliases)
+	queriesCommand, err := es_cmds.NewQueriesCommand(esCommands, aliases)
 	if err != nil {
 		return err
 	}

@@ -1,4 +1,4 @@
-package pkg
+package cmds
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
+	layers2 "github.com/go-go-golems/escuse-me/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds/layout"
@@ -69,8 +70,8 @@ func (esc *ElasticSearchCommand) RunIntoGlazeProcessor(
 		return errors.Wrapf(err, "Could not create ES client")
 	}
 
-	esHelperSettings := &ESHelperSettings{}
-	err = parsedLayers.InitializeStruct(ESHelpersSlug, esHelperSettings)
+	esHelperSettings := &layers2.ESHelperSettings{}
+	err = parsedLayers.InitializeStruct(layers2.ESHelpersSlug, esHelperSettings)
 	if err != nil {
 		return err
 	}
@@ -137,8 +138,8 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 	parsedLayers *layers.ParsedLayers,
 	gp middlewares.Processor,
 ) error {
-	esHelperSettings := &ESHelperSettings{}
-	err := parsedLayers.InitializeStruct(ESHelpersSlug, esHelperSettings)
+	esHelperSettings := &layers2.ESHelperSettings{}
+	err := parsedLayers.InitializeStruct(layers2.ESHelpersSlug, esHelperSettings)
 	if err != nil {
 		return err
 	}

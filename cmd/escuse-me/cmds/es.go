@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v8"
-	"github.com/go-go-golems/escuse-me/pkg"
+	layers2 "github.com/go-go-golems/escuse-me/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
@@ -29,7 +29,7 @@ func NewInfoCommand() (*InfoCommand, error) {
 		return nil, errors.Wrap(err, "could not create Glazed parameter layer")
 	}
 
-	esParameterLayer, err := pkg.NewESParameterLayer()
+	esParameterLayer, err := layers2.NewESParameterLayer()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create ES parameter layer")
 	}
@@ -69,7 +69,7 @@ func (i *InfoCommand) RunIntoGlazeProcessor(
 		return err
 	}
 
-	es, err := pkg.NewESClientFromParsedLayers(parsedLayers)
+	es, err := layers2.NewESClientFromParsedLayers(parsedLayers)
 	if err != nil {
 		return err
 	}

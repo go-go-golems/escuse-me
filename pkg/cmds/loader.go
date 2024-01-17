@@ -1,6 +1,7 @@
-package pkg
+package cmds
 
 import (
+	"github.com/go-go-golems/escuse-me/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/alias"
 	"github.com/go-go-golems/glazed/pkg/cmds/layout"
@@ -98,7 +99,7 @@ func (escl *ElasticSearchCommandLoader) LoadCommands(
 		return nil, errors.New("No query template specified")
 	}
 
-	esHelpersLayer, err := NewESHelpersParameterLayer()
+	esHelpersLayer, err := layers.NewESHelpersParameterLayer()
 	if err != nil {
 		return nil, err
 	}
