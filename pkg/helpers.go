@@ -10,7 +10,7 @@ const ESHelpersSlug = "es-helpers"
 type ESHelperSettings struct {
 	PrintQuery bool   `glazed.parameter:"print-query"`
 	Explain    bool   `glazed.parameter:"explain"`
-	Index      string `glazed.parameter:"index"`
+	Index      string `glazed.parameter:"es-index"`
 }
 
 func NewESHelpersParameterLayer(
@@ -30,7 +30,7 @@ func NewESHelpersParameterLayer(
 			parameters.WithDefault(false),
 		),
 		parameters.NewParameterDefinition(
-			"index",
+			"es-index",
 			parameters.ParameterTypeString,
 			parameters.WithHelp("The index to search in"),
 		),
