@@ -5,12 +5,13 @@ import (
 	"fmt"
 	clay "github.com/go-go-golems/clay/pkg"
 	"github.com/go-go-golems/clay/pkg/cmds"
-	cmds2 "github.com/go-go-golems/escuse-me/cmd/escuse-me/cmds"
+	cli_cmds "github.com/go-go-golems/escuse-me/cmd/escuse-me/cmds"
 	es_cmds "github.com/go-go-golems/escuse-me/pkg/cmds"
 	"github.com/go-go-golems/escuse-me/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cli"
 	glazed_cmds "github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/alias"
+	layers2 "github.com/go-go-golems/glazed/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds/loaders"
 	"github.com/go-go-golems/glazed/pkg/help"
 	"github.com/go-go-golems/glazed/pkg/helpers/cast"
@@ -173,6 +174,7 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	}
 	err = cli.AddCommandsToRootCommand(rootCmd, commands_, aliases,
 		cli.WithCobraMiddlewaresFunc(es_cmds.GetCobraCommandEscuseMeMiddlewares),
+		cli.WithCobraShortHelpLayers(layers2.DefaultSlug, layers.EsConnectionSlug, layers.ESHelpersSlug),
 	)
 	if err != nil {
 		return err
@@ -187,22 +189,31 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	if err != nil {
 		return err
 	}
-	cobraQueriesCommand, err := cli.BuildCobraCommandFromGlazeCommand(queriesCommand)
+	cobraQueriesCommand, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(queriesCommand)
 	if err != nil {
 		return err
 	}
 
 	rootCmd.AddCommand(cobraQueriesCommand)
 
-	infoCommand, err := cmds2.NewInfoCommand()
+	infoCommand, err := cli_cmds.NewInfoCommand()
 	if err != nil {
 		return err
 	}
-	infoCmd, err := cli.BuildCobraCommandFromGlazeCommand(infoCommand)
+	infoCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(infoCommand)
 	if err != nil {
 		return err
 	}
 	rootCmd.AddCommand(infoCmd)
+
+	serveCommand := cli_cmds.NewServeCommand(repositories,
+		glazed_cmds.WithLayersList(esParameterLayer),
+	)
+	serveCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(serveCommand)
+	if err != nil {
+		return err
+	}
+	rootCmd.AddCommand(serveCmd)
 
 	indicesCommand := &cobra.Command{
 		Use:   "indices",
@@ -210,31 +221,31 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	}
 	rootCmd.AddCommand(indicesCommand)
 
-	indicesListCommand, err := cmds2.NewIndicesListCommand()
+	indicesListCommand, err := cli_cmds.NewIndicesListCommand()
 	if err != nil {
 		return err
 	}
-	indicesListCmd, err := cli.BuildCobraCommandFromGlazeCommand(indicesListCommand)
+	indicesListCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(indicesListCommand)
 	if err != nil {
 		return err
 	}
 	indicesCommand.AddCommand(indicesListCmd)
 
-	indicesStatsCommand, err := cmds2.NewIndicesStatsCommand()
+	indicesStatsCommand, err := cli_cmds.NewIndicesStatsCommand()
 	if err != nil {
 		return err
 	}
-	indicesStatsCmd, err := cli.BuildCobraCommandFromGlazeCommand(indicesStatsCommand)
+	indicesStatsCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(indicesStatsCommand)
 	if err != nil {
 		return err
 	}
 	indicesCommand.AddCommand(indicesStatsCmd)
 
-	indicesGetMappingCommand, err := cmds2.NewIndicesGetMappingCommand()
+	indicesGetMappingCommand, err := cli_cmds.NewIndicesGetMappingCommand()
 	if err != nil {
 		return err
 	}
-	indicesGetMappingCmd, err := cli.BuildCobraCommandFromGlazeCommand(indicesGetMappingCommand)
+	indicesGetMappingCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(indicesGetMappingCommand)
 	if err != nil {
 		return err
 	}
