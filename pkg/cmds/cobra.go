@@ -4,6 +4,7 @@ import (
 	"github.com/go-go-golems/escuse-me/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cli"
 	"github.com/go-go-golems/glazed/pkg/cmds"
+	layers2 "github.com/go-go-golems/glazed/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds/middlewares"
 	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
 	"github.com/spf13/cobra"
@@ -15,6 +16,7 @@ func BuildCobraCommandWithEscuseMeMiddlewares(
 ) (*cobra.Command, error) {
 	options_ := append([]cli.CobraParserOption{
 		cli.WithCobraMiddlewaresFunc(GetCobraCommandEscuseMeMiddlewares),
+		cli.WithCobraShortHelpLayers(layers2.DefaultSlug, layers.EsConnectionSlug, layers.ESHelpersSlug),
 	}, options...)
 
 	return cli.BuildCobraCommandFromCommand(cmd, options_...)

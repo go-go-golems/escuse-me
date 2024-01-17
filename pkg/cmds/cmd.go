@@ -35,9 +35,9 @@ type EscuseMeCommandDescription struct {
 type ESClientFactory func(*layers.ParsedLayers) (*elasticsearch.Client, error)
 
 type ElasticSearchCommand struct {
-	*cmds.CommandDescription
-	Query         string
-	clientFactory ESClientFactory
+	*cmds.CommandDescription `yaml:",inline"`
+	Query                    string `yaml:"query"`
+	clientFactory            ESClientFactory
 }
 
 var _ cmds.GlazeCommand = &ElasticSearchCommand{}
