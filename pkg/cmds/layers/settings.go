@@ -1,4 +1,4 @@
-package pkg
+package layers
 
 import (
 	_ "embed"
