@@ -3,12 +3,16 @@ package cmds
 import (
 	"context"
 	"fmt"
+	es_cmds "github.com/go-go-golems/escuse-me/pkg/cmds"
+	es_layers "github.com/go-go-golems/escuse-me/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
+	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
 	"github.com/go-go-golems/parka/pkg/glazed/handlers/datatables"
 	"github.com/go-go-golems/parka/pkg/handlers"
 	command_dir "github.com/go-go-golems/parka/pkg/handlers/command-dir"
 	"github.com/go-go-golems/parka/pkg/handlers/config"
+	"github.com/go-go-golems/parka/pkg/handlers/template"
 	template_dir "github.com/go-go-golems/parka/pkg/handlers/template-dir"
 	"github.com/go-go-golems/parka/pkg/server"
 	"github.com/pkg/errors"
@@ -23,35 +27,174 @@ type ServeCommand struct {
 	repositories []string
 }
 
+var _ cmds.BareCommand = &ServeCommand{}
+
+type ServeSettings struct {
+	Dev         bool     `glazed.parameter:"dev"`
+	Debug       bool     `glazed.parameter:"debug"`
+	ContentDirs []string `glazed.parameter:"content-dirs"`
+	ServePort   int      `glazed.parameter:"serve-port"`
+	ServeHost   string   `glazed.parameter:"serve-host"`
+	ConfigFile  string   `glazed.parameter:"config-file"`
+}
+
+func NewServeCommand(
+	repositories []string,
+	options ...cmds.CommandDescriptionOption,
+) *ServeCommand {
+	options_ := append(options,
+		cmds.WithShort("Serve the API"),
+		cmds.WithFlags(
+			parameters.NewParameterDefinition(
+				"serve-port",
+				parameters.ParameterTypeInteger,
+				parameters.WithShortFlag("p"),
+				parameters.WithHelp("Port to serve the API on"),
+				parameters.WithDefault(8080),
+			),
+			parameters.NewParameterDefinition(
+				"serve-host",
+				parameters.ParameterTypeString,
+				parameters.WithHelp("Host to serve the API on"),
+				parameters.WithDefault("localhost"),
+			),
+			parameters.NewParameterDefinition(
+				"dev",
+				parameters.ParameterTypeBool,
+				parameters.WithHelp("Run in development mode"),
+				parameters.WithDefault(false),
+			),
+			parameters.NewParameterDefinition(
+				"debug",
+				parameters.ParameterTypeBool,
+				parameters.WithHelp("Run in debug mode (expose /debug/pprof routes)"),
+				parameters.WithDefault(false),
+			),
+			parameters.NewParameterDefinition(
+				"content-dirs",
+				parameters.ParameterTypeStringList,
+				parameters.WithHelp("Serve static and templated files from these directories"),
+				parameters.WithDefault([]string{}),
+			),
+			parameters.NewParameterDefinition(
+				"config-file",
+				parameters.ParameterTypeString,
+				parameters.WithHelp("Config file to configure the serve functionality"),
+			),
+		),
+	)
+
+	return &ServeCommand{
+		CommandDescription: cmds.NewCommandDescription(
+			"serve",
+			options_...,
+		),
+		repositories: repositories,
+	}
+}
+
 func (s *ServeCommand) runWithConfigFile(
 	ctx context.Context,
-	parsedLayers map[string]*layers.ParsedLayer,
-	ps map[string]interface{},
+	parsedLayers *layers.ParsedLayers,
 	configFilePath string,
 	serverOptions []server.ServerOption,
 ) error {
-	return errors.New("not implemented")
+	ss := &ServeSettings{}
+	err := parsedLayers.InitializeStruct(layers.DefaultSlug, ss)
+	if err != nil {
+		return err
+	}
+
+	configData, err := os.ReadFile(configFilePath)
+	if err != nil {
+		return err
+	}
+
+	configFile, err := config.ParseConfig(configData)
+	if err != nil {
+		return err
+	}
+
+	server_, err := server.NewServer(serverOptions...)
+	if err != nil {
+		return err
+	}
+
+	if ss.Debug {
+		server_.RegisterDebugRoutes()
+	}
+
+	esConnectionLayer, ok := parsedLayers.Get(es_layers.EsConnectionSlug)
+	if !ok {
+		return errors.Errorf("Could not find layer %s", es_layers.EsConnectionSlug)
+	}
+
+	commandDirHandlerOptions := []command_dir.CommandDirHandlerOption{}
+	templateDirHandlerOptions := []template_dir.TemplateDirHandlerOption{}
+
+	// TODO(manuel, 2023-06-20): These should be able to be set from the config file itself.
+	// See: https://github.com/go-go-golems/parka/issues/51
+	devMode := ss.Dev
+
+	// NOTE(manuel, 2023-12-13) Why do we append these to the config file?
+	commandDirHandlerOptions = append(
+		commandDirHandlerOptions,
+		command_dir.WithParameterFilterOptions(
+			config.WithLayerDefaults(
+				esConnectionLayer.Layer.GetSlug(),
+				esConnectionLayer.Parameters.ToMap(),
+			),
+		),
+		command_dir.WithDefaultTemplateName("data-tables.tmpl.html"),
+		command_dir.WithDefaultIndexTemplateName("index.tmpl.html"),
+		command_dir.WithDevMode(devMode),
+	)
+
+	templateDirHandlerOptions = append(
+		// pass in the default parka renderer options for being able to render markdown files
+		templateDirHandlerOptions,
+		template_dir.WithAlwaysReload(devMode),
+	)
+
+	templateHandlerOptions := []template.TemplateHandlerOption{
+		template.WithAlwaysReload(devMode),
+	}
+
+	cfh := handlers.NewConfigFileHandler(
+		configFile,
+		handlers.WithAppendCommandDirHandlerOptions(commandDirHandlerOptions...),
+		handlers.WithAppendTemplateDirHandlerOptions(templateDirHandlerOptions...),
+		handlers.WithAppendTemplateHandlerOptions(templateHandlerOptions...),
+		handlers.WithRepositoryFactory(es_cmds.NewRepositoryFactory()),
+		handlers.WithDevMode(devMode),
+	)
+
+	err = runConfigFileHandler(ctx, server_, cfh)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *ServeCommand) Run(
 	ctx context.Context,
-	parsedLayers map[string]*layers.ParsedLayer,
-	ps map[string]interface{},
+	parsedLayers *layers.ParsedLayers,
 ) error {
-	// now set up parka server
-	port := ps["serve-port"].(int)
-	host := ps["serve-host"].(string)
-	debug := ps["debug"].(bool)
-	dev, _ := ps["dev"].(bool)
+	ss := &ServeSettings{}
+	err := parsedLayers.InitializeStruct(layers.DefaultSlug, ss)
+	if err != nil {
+		return err
+	}
 
 	serverOptions := []server.ServerOption{
-		server.WithPort(uint16(port)),
-		server.WithAddress(host),
+		server.WithPort(uint16(ss.ServePort)),
+		server.WithAddress(ss.ServeHost),
 		server.WithGzip(),
 	}
 
-	if configFilePath, ok := ps["config-file"]; ok {
-		return s.runWithConfigFile(ctx, parsedLayers, ps, configFilePath.(string), serverOptions)
+	if ss.ConfigFile != "" {
+		return s.runWithConfigFile(ctx, parsedLayers, ss.ConfigFile, serverOptions)
 	}
 
 	configFile := &config.Config{
@@ -65,7 +208,7 @@ func (s *ServeCommand) Run(
 		},
 	}
 
-	contentDirs := ps["content-dirs"].([]string)
+	contentDirs := ss.ContentDirs
 
 	if len(contentDirs) > 1 {
 		return fmt.Errorf("only one content directory is supported at the moment")
@@ -90,22 +233,30 @@ func (s *ServeCommand) Run(
 		return err
 	}
 
-	if debug {
+	if ss.Dev {
 		server_.RegisterDebugRoutes()
+	}
+
+	esClientLayer, ok := parsedLayers.Get(es_layers.EsConnectionSlug)
+	if !ok {
+		return errors.Errorf("Could not find layer %s", es_layers.EsConnectionSlug)
 	}
 
 	commandDirHandlerOptions := []command_dir.CommandDirHandlerOption{
 		command_dir.WithTemplateLookup(datatables.NewDataTablesLookupTemplate()),
 		command_dir.WithParameterFilterOptions(
-		// ... override with ES server settings
+			config.WithLayerDefaults(
+				esClientLayer.Layer.GetSlug(),
+				esClientLayer.Parameters.ToMap(),
+			),
 		),
 		command_dir.WithDefaultTemplateName("data-tables.tmpl.html"),
 		command_dir.WithDefaultIndexTemplateName(""),
-		command_dir.WithDevMode(dev),
+		command_dir.WithDevMode(ss.Dev),
 	}
 
 	templateDirHandlerOptions := []template_dir.TemplateDirHandlerOption{
-		template_dir.WithAlwaysReload(dev),
+		template_dir.WithAlwaysReload(ss.Dev),
 	}
 
 	err = configFile.Initialize()
@@ -117,9 +268,8 @@ func (s *ServeCommand) Run(
 		configFile,
 		handlers.WithAppendCommandDirHandlerOptions(commandDirHandlerOptions...),
 		handlers.WithAppendTemplateDirHandlerOptions(templateDirHandlerOptions...),
-		// TODO(manuel, 2023-12-13) This is the thing to implement
-		//handlers.WithRepositoryFactory()
-		handlers.WithDevMode(dev),
+		handlers.WithRepositoryFactory(es_cmds.NewRepositoryFactory()),
+		handlers.WithDevMode(ss.Dev),
 	)
 
 	err = runConfigFileHandler(ctx, server_, cfh)

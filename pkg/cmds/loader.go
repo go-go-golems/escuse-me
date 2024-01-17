@@ -1,7 +1,6 @@
 package cmds
 
 import (
-	"github.com/go-go-golems/escuse-me/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/alias"
 	"github.com/go-go-golems/glazed/pkg/cmds/layout"
@@ -99,11 +98,6 @@ func (escl *ElasticSearchCommandLoader) LoadCommands(
 		return nil, errors.New("No query template specified")
 	}
 
-	esHelpersLayer, err := layers.NewESHelpersParameterLayer()
-	if err != nil {
-		return nil, err
-	}
-
 	options_ := []cmds.CommandDescriptionOption{
 		cmds.WithName(escd.Name),
 		cmds.WithShort(escd.Short),
@@ -114,7 +108,6 @@ func (escl *ElasticSearchCommandLoader) LoadCommands(
 		cmds.WithLayout(&layout.Layout{
 			Sections: escd.Layout,
 		}),
-		cmds.WithLayersList(esHelpersLayer),
 	}
 	options_ = append(options_, options...)
 
