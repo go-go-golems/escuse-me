@@ -4,17 +4,18 @@ import (
 	"embed"
 	"fmt"
 	clay "github.com/go-go-golems/clay/pkg"
-	"github.com/go-go-golems/clay/pkg/cmds/locations"
+	ls_commands "github.com/go-go-golems/clay/pkg/cmds/ls-commands"
+	"github.com/go-go-golems/clay/pkg/repositories"
 	cli_cmds "github.com/go-go-golems/escuse-me/cmd/escuse-me/cmds"
 	es_cmds "github.com/go-go-golems/escuse-me/pkg/cmds"
 	"github.com/go-go-golems/escuse-me/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cli"
 	glazed_cmds "github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/alias"
-	layers2 "github.com/go-go-golems/glazed/pkg/cmds/layers"
+	glazed_layers "github.com/go-go-golems/glazed/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds/loaders"
 	"github.com/go-go-golems/glazed/pkg/help"
-	"github.com/go-go-golems/glazed/pkg/helpers/cast"
+	"github.com/go-go-golems/glazed/pkg/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
@@ -137,54 +138,69 @@ func initRootCmd() (*help.HelpSystem, error) {
 }
 
 func initAllCommands(helpSystem *help.HelpSystem) error {
-	repositories := viper.GetStringSlice("repositories")
+	repositoryPaths := viper.GetStringSlice("repositories")
 
 	defaultDirectory := "$HOME/.escuse-me/queries"
-	repositories = append(repositories, defaultDirectory)
-
-	locations_ := locations.NewCommandLocations(
-		locations.WithEmbeddedLocations(
-			locations.EmbeddedCommandLocation{
-				FS:      queriesFS,
-				Name:    "embed",
-				Root:    "queries",
-				DocRoot: "queries/doc",
-			}),
-		locations.WithRepositories(repositories...),
-		locations.WithHelpSystem(helpSystem),
-	)
+	repositoryPaths = append(repositoryPaths, defaultDirectory)
 
 	clientFactory := layers.NewESClientFromParsedLayers
 	loader := es_cmds.NewElasticSearchCommandLoader(clientFactory)
 
-	commandLoader := locations.NewCommandLoader[*es_cmds.ElasticSearchCommand](locations_)
-	commands, aliases, err := commandLoader.LoadCommands(loader, helpSystem)
-	if err != nil {
-		return err
+	repositories_ := []*repositories.Repository{
+		repositories.NewRepository(
+			repositories.WithFS(queriesFS),
+			repositories.WithName("embed:escuse-me"),
+			repositories.WithRootDirectory("queries"),
+			repositories.WithDocRootDirectory("queries/doc"),
+		),
 	}
 
-	commands_, ok := cast.CastList[glazed_cmds.Command](commands)
-	if !ok {
-		return fmt.Errorf("could not cast commands to GlazeCommand")
+	for _, repositoryPath := range repositoryPaths {
+		dir := os.ExpandEnv(repositoryPath)
+		// check if dir exists
+		if fi, err := os.Stat(dir); os.IsNotExist(err) || !fi.IsDir() {
+			continue
+		}
+		repositories_ = append(repositories_, repositories.NewRepository(
+			repositories.WithDirectories(dir),
+			repositories.WithName(dir),
+			repositories.WithFS(os.DirFS(dir)),
+			repositories.WithCommandLoader(loader),
+		))
 	}
-	err = cli.AddCommandsToRootCommand(rootCmd, commands_, aliases,
+
+	allCommands := repositories.LoadRepositories(
+		helpSystem,
+		rootCmd,
+		repositories_,
 		cli.WithCobraMiddlewaresFunc(es_cmds.GetCobraCommandEscuseMeMiddlewares),
-		cli.WithCobraShortHelpLayers(layers2.DefaultSlug, layers.EsConnectionSlug, layers.ESHelpersSlug),
+		cli.WithCobraShortHelpLayers(glazed_layers.DefaultSlug, layers.EsConnectionSlug, layers.ESHelpersSlug),
+	)
+
+	lsCommandsCommand, err := ls_commands.NewListCommandsCommand(allCommands,
+		ls_commands.WithCommandDescriptionOptions(
+			glazed_cmds.WithShort("Commands related to sqleton queries"),
+		),
+		ls_commands.WithAddCommandToRowFunc(func(
+			command glazed_cmds.Command,
+			row types.Row,
+			parsedLayers *glazed_layers.ParsedLayers,
+		) ([]types.Row, error) {
+			ret := []types.Row{row}
+			switch c := command.(type) {
+			case *es_cmds.ElasticSearchCommand:
+				row.Set("query", c.Query)
+				row.Set("type", "escuse-me")
+			default:
+			}
+
+			return ret, nil
+		}),
 	)
 	if err != nil {
 		return err
 	}
-
-	esCommands, ok := cast.CastList[*es_cmds.ElasticSearchCommand](commands)
-	if !ok {
-		return fmt.Errorf("could not cast commands to ElasticSearchCommand")
-	}
-
-	queriesCommand, err := es_cmds.NewQueriesCommand(esCommands, aliases)
-	if err != nil {
-		return err
-	}
-	cobraQueriesCommand, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(queriesCommand)
+	cobraQueriesCommand, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(lsCommandsCommand)
 	if err != nil {
 		return err
 	}
@@ -201,7 +217,7 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	}
 	rootCmd.AddCommand(infoCmd)
 
-	serveCommand, err := cli_cmds.NewServeCommand(repositories)
+	serveCommand, err := cli_cmds.NewServeCommand(repositoryPaths)
 	if err != nil {
 		return err
 	}
