@@ -142,11 +142,7 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	defaultDirectory := "$HOME/.escuse-me/queries"
 	repositories = append(repositories, defaultDirectory)
 
-	esParameterLayer, err := layers.NewESParameterLayer()
-	if err != nil {
-		return err
-	}
-	locations := locations.NewCommandLocations(
+	locations_ := locations.NewCommandLocations(
 		locations.WithEmbeddedLocations(
 			locations.EmbeddedCommandLocation{
 				FS:      queriesFS,
@@ -156,13 +152,12 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 			}),
 		locations.WithRepositories(repositories...),
 		locations.WithHelpSystem(helpSystem),
-		locations.WithAdditionalLayers(esParameterLayer),
 	)
 
 	clientFactory := layers.NewESClientFromParsedLayers
 	loader := es_cmds.NewElasticSearchCommandLoader(clientFactory)
 
-	commandLoader := locations.NewCommandLoader[*es_cmds.ElasticSearchCommand](locations)
+	commandLoader := locations.NewCommandLoader[*es_cmds.ElasticSearchCommand](locations_)
 	commands, aliases, err := commandLoader.LoadCommands(loader, helpSystem)
 	if err != nil {
 		return err
@@ -206,9 +201,10 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	}
 	rootCmd.AddCommand(infoCmd)
 
-	serveCommand := cli_cmds.NewServeCommand(repositories,
-		glazed_cmds.WithLayersList(esParameterLayer),
-	)
+	serveCommand, err := cli_cmds.NewServeCommand(repositories)
+	if err != nil {
+		return err
+	}
 	serveCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(serveCommand)
 	if err != nil {
 		return err
