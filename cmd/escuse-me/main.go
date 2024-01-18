@@ -4,7 +4,7 @@ import (
 	"embed"
 	"fmt"
 	clay "github.com/go-go-golems/clay/pkg"
-	"github.com/go-go-golems/clay/pkg/cmds"
+	"github.com/go-go-golems/clay/pkg/cmds/locations"
 	cli_cmds "github.com/go-go-golems/escuse-me/cmd/escuse-me/cmds"
 	es_cmds "github.com/go-go-golems/escuse-me/pkg/cmds"
 	"github.com/go-go-golems/escuse-me/pkg/cmds/layers"
@@ -146,23 +146,23 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	if err != nil {
 		return err
 	}
-	locations := cmds.NewCommandLocations(
-		cmds.WithEmbeddedLocations(
-			cmds.EmbeddedCommandLocation{
+	locations := locations.NewCommandLocations(
+		locations.WithEmbeddedLocations(
+			locations.EmbeddedCommandLocation{
 				FS:      queriesFS,
 				Name:    "embed",
 				Root:    "queries",
 				DocRoot: "queries/doc",
 			}),
-		cmds.WithRepositories(repositories...),
-		cmds.WithHelpSystem(helpSystem),
-		cmds.WithAdditionalLayers(esParameterLayer),
+		locations.WithRepositories(repositories...),
+		locations.WithHelpSystem(helpSystem),
+		locations.WithAdditionalLayers(esParameterLayer),
 	)
 
 	clientFactory := layers.NewESClientFromParsedLayers
 	loader := es_cmds.NewElasticSearchCommandLoader(clientFactory)
 
-	commandLoader := cmds.NewCommandLoader[*es_cmds.ElasticSearchCommand](locations)
+	commandLoader := locations.NewCommandLoader[*es_cmds.ElasticSearchCommand](locations)
 	commands, aliases, err := commandLoader.LoadCommands(loader, helpSystem)
 	if err != nil {
 		return err
