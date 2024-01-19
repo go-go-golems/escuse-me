@@ -7,6 +7,8 @@ import (
 	ls_commands "github.com/go-go-golems/clay/pkg/cmds/ls-commands"
 	"github.com/go-go-golems/clay/pkg/repositories"
 	cli_cmds "github.com/go-go-golems/escuse-me/cmd/escuse-me/cmds"
+	"github.com/go-go-golems/escuse-me/cmd/escuse-me/cmds/documents"
+	"github.com/go-go-golems/escuse-me/cmd/escuse-me/cmds/indices"
 	es_cmds "github.com/go-go-golems/escuse-me/pkg/cmds"
 	"github.com/go-go-golems/escuse-me/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cli"
@@ -227,41 +229,15 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	}
 	rootCmd.AddCommand(serveCmd)
 
-	indicesCommand := &cobra.Command{
-		Use:   "indices",
-		Short: "ES indices related commands",
+	err = indices.AddToRootCommand(rootCmd)
+	if err != nil {
+		return err
 	}
-	rootCmd.AddCommand(indicesCommand)
 
-	indicesListCommand, err := cli_cmds.NewIndicesListCommand()
+	err = documents.AddToRootCommand(rootCmd)
 	if err != nil {
 		return err
 	}
-	indicesListCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(indicesListCommand)
-	if err != nil {
-		return err
-	}
-	indicesCommand.AddCommand(indicesListCmd)
-
-	indicesStatsCommand, err := cli_cmds.NewIndicesStatsCommand()
-	if err != nil {
-		return err
-	}
-	indicesStatsCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(indicesStatsCommand)
-	if err != nil {
-		return err
-	}
-	indicesCommand.AddCommand(indicesStatsCmd)
-
-	indicesGetMappingCommand, err := cli_cmds.NewIndicesGetMappingCommand()
-	if err != nil {
-		return err
-	}
-	indicesGetMappingCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(indicesGetMappingCommand)
-	if err != nil {
-		return err
-	}
-	indicesCommand.AddCommand(indicesGetMappingCmd)
 
 	return nil
 }
