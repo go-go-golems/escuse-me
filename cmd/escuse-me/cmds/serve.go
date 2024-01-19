@@ -41,7 +41,12 @@ type ServeSettings struct {
 func NewServeCommand(
 	repositories []string,
 	options ...cmds.CommandDescriptionOption,
-) *ServeCommand {
+) (*ServeCommand, error) {
+	esParameterLayer, err := es_layers.NewESParameterLayer()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create ES connection layer")
+	}
+
 	options_ := append(options,
 		cmds.WithShort("Serve the API"),
 		cmds.WithFlags(
@@ -82,6 +87,7 @@ func NewServeCommand(
 				parameters.WithHelp("Config file to configure the serve functionality"),
 			),
 		),
+		cmds.WithLayersList(esParameterLayer),
 	)
 
 	return &ServeCommand{
@@ -90,7 +96,7 @@ func NewServeCommand(
 			options_...,
 		),
 		repositories: repositories,
-	}
+	}, nil
 }
 
 func (s *ServeCommand) runWithConfigFile(
