@@ -22,5 +22,45 @@ func AddToRootCommand(rootCmd *cobra.Command) error {
 	}
 	documentsCommand.AddCommand(indexDocumentCmd)
 
+	deleteDocumentCommand, err := NewDeleteDocumentCommand()
+	if err != nil {
+		return err
+	}
+	deleteDocumentCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(deleteDocumentCommand)
+	if err != nil {
+		return err
+	}
+	documentsCommand.AddCommand(deleteDocumentCmd)
+
+	deleteByQueryCommand, err := NewDeleteByQueryCommand()
+	if err != nil {
+		return err
+	}
+	deleteByQueryCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(deleteByQueryCommand)
+	if err != nil {
+		return err
+	}
+	documentsCommand.AddCommand(deleteByQueryCmd)
+
+	getDocumentCommand, err := NewGetDocumentCommand()
+	if err != nil {
+		return err
+	}
+	getDocumentCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(getDocumentCommand)
+	if err != nil {
+		return err
+	}
+	documentsCommand.AddCommand(getDocumentCmd)
+
+	bulkCommand, err := NewBulkCommand()
+	if err != nil {
+		return err
+	}
+	bulkCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(bulkCommand)
+	if err != nil {
+		return err
+	}
+	documentsCommand.AddCommand(bulkCmd)
+
 	return nil
 }
