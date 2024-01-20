@@ -4,13 +4,14 @@ go 1.19
 
 require (
 	github.com/elastic/go-elasticsearch/v8 v8.6.0
-	github.com/go-go-golems/clay v0.1.8
-	github.com/go-go-golems/glazed v0.5.7
-	github.com/go-go-golems/parka v0.5.2
+	github.com/go-go-golems/clay v0.1.9
+	github.com/go-go-golems/glazed v0.5.8
+	github.com/go-go-golems/parka v0.5.3
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.30.0
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
+	github.com/wk8/go-ordered-map/v2 v2.1.8
 	golang.org/x/sync v0.3.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -101,7 +102,6 @@ require (
 	github.com/tj/go-naturaldate v1.3.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
-	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/xuri/efp v0.0.0-20220603152613-6918739fd470 // indirect
 	github.com/xuri/excelize/v2 v2.7.1 // indirect
 	github.com/xuri/nfp v0.0.0-20220409054826-5e722a1d9e22 // indirect
