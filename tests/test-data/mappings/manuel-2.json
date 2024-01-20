@@ -1,0 +1,12 @@
+{
+  "name": {
+    "properties": {
+      "first": {
+        "type": "text"
+      },
+      "second": {
+        "type": "text"
+      }
+    }
+  }
+}
