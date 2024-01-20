@@ -1,0 +1,9 @@
+{
+  "alias_1": {},
+  "alias_2": {
+    "filter": {
+      "term": { "user.id": "kimchy" }
+    },
+    "routing": "shard-1"
+  }
+}

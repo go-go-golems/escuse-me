@@ -7,6 +7,8 @@ import (
 	ls_commands "github.com/go-go-golems/clay/pkg/cmds/ls-commands"
 	"github.com/go-go-golems/clay/pkg/repositories"
 	cli_cmds "github.com/go-go-golems/escuse-me/cmd/escuse-me/cmds"
+	"github.com/go-go-golems/escuse-me/cmd/escuse-me/cmds/documents"
+	"github.com/go-go-golems/escuse-me/cmd/escuse-me/cmds/indices"
 	es_cmds "github.com/go-go-golems/escuse-me/pkg/cmds"
 	"github.com/go-go-golems/escuse-me/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cli"
@@ -61,7 +63,7 @@ func main() {
 		aliasOptions := []alias.Option{}
 		fs := os.DirFS(path)
 		cmds, err := loaders.LoadCommandsFromFS(
-			fs, ".",
+			fs, ".", os.Args[2],
 			loader,
 			options, aliasOptions,
 		)
@@ -146,14 +148,14 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	clientFactory := layers.NewESClientFromParsedLayers
 	loader := es_cmds.NewElasticSearchCommandLoader(clientFactory)
 
-	repositories_ := []*repositories.Repository{
-		repositories.NewRepository(
-			repositories.WithFS(queriesFS),
-			repositories.WithName("embed:escuse-me"),
-			repositories.WithRootDirectory("queries"),
-			repositories.WithDocRootDirectory("queries/doc"),
-		),
-	}
+	directories := []repositories.Directory{
+		{
+			FS:               queriesFS,
+			RootDirectory:    "queries",
+			RootDocDirectory: "queries/doc",
+			Name:             "escuse-me",
+			SourcePrefix:     "embed",
+		}}
 
 	for _, repositoryPath := range repositoryPaths {
 		dir := os.ExpandEnv(repositoryPath)
@@ -161,21 +163,33 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 		if fi, err := os.Stat(dir); os.IsNotExist(err) || !fi.IsDir() {
 			continue
 		}
-		repositories_ = append(repositories_, repositories.NewRepository(
-			repositories.WithDirectories(dir),
-			repositories.WithName(dir),
-			repositories.WithFS(os.DirFS(dir)),
-			repositories.WithCommandLoader(loader),
-		))
+		directories = append(directories, repositories.Directory{
+			FS:               os.DirFS(dir),
+			RootDirectory:    ".",
+			RootDocDirectory: "doc",
+			Directory:        dir,
+			Name:             dir,
+			SourcePrefix:     "file",
+		})
 	}
 
-	allCommands := repositories.LoadRepositories(
+	repositories_ := []*repositories.Repository{
+		repositories.NewRepository(
+			repositories.WithDirectories(directories...),
+			repositories.WithCommandLoader(loader),
+		),
+	}
+
+	allCommands, err := repositories.LoadRepositories(
 		helpSystem,
 		rootCmd,
 		repositories_,
 		cli.WithCobraMiddlewaresFunc(es_cmds.GetCobraCommandEscuseMeMiddlewares),
 		cli.WithCobraShortHelpLayers(glazed_layers.DefaultSlug, layers.EsConnectionSlug, layers.ESHelpersSlug),
 	)
+	if err != nil {
+		return err
+	}
 
 	lsCommandsCommand, err := ls_commands.NewListCommandsCommand(allCommands,
 		ls_commands.WithCommandDescriptionOptions(
@@ -227,41 +241,15 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	}
 	rootCmd.AddCommand(serveCmd)
 
-	indicesCommand := &cobra.Command{
-		Use:   "indices",
-		Short: "ES indices related commands",
+	err = indices.AddToRootCommand(rootCmd)
+	if err != nil {
+		return err
 	}
-	rootCmd.AddCommand(indicesCommand)
 
-	indicesListCommand, err := cli_cmds.NewIndicesListCommand()
+	err = documents.AddToRootCommand(rootCmd)
 	if err != nil {
 		return err
 	}
-	indicesListCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(indicesListCommand)
-	if err != nil {
-		return err
-	}
-	indicesCommand.AddCommand(indicesListCmd)
-
-	indicesStatsCommand, err := cli_cmds.NewIndicesStatsCommand()
-	if err != nil {
-		return err
-	}
-	indicesStatsCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(indicesStatsCommand)
-	if err != nil {
-		return err
-	}
-	indicesCommand.AddCommand(indicesStatsCmd)
-
-	indicesGetMappingCommand, err := cli_cmds.NewIndicesGetMappingCommand()
-	if err != nil {
-		return err
-	}
-	indicesGetMappingCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(indicesGetMappingCommand)
-	if err != nil {
-		return err
-	}
-	indicesCommand.AddCommand(indicesGetMappingCmd)
 
 	return nil
 }

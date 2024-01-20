@@ -1,0 +1,225 @@
+{
+  "botanical_name": {
+    "type": "text",
+    "fields": {
+      "bigrammed": {
+        "type": "text",
+        "analyzer": "english_bigrams"
+      },
+      "text": {
+        "type": "text"
+      }
+    }
+  },
+  "category": {
+    "type": "keyword",
+    "fields": {
+      "bigrammed": {
+        "type": "text",
+        "analyzer": "english_bigrams"
+      },
+      "text": {
+        "type": "text",
+        "analyzer": "pluralizer"
+      }
+    }
+  },
+  "category_id": {
+    "type": "integer"
+  },
+  "created_at": {
+    "type": "date"
+  },
+  "does_not_ship_to_state": {
+    "type": "keyword"
+  },
+  "flower_color": {
+    "type": "keyword"
+  },
+  "flowering_season": {
+    "type": "keyword"
+  },
+  "growth_rate": {
+    "type": "keyword"
+  },
+  "hardiness_zone": {
+    "type": "integer"
+  },
+  "hardiness_zone_from": {
+    "type": "integer"
+  },
+  "hardiness_zone_to": {
+    "type": "integer"
+  },
+  "has_bundle": {
+    "type": "boolean"
+  },
+  "has_bundle_in_stock": {
+    "type": "boolean"
+  },
+  "in_stock": {
+    "type": "boolean"
+  },
+  "is_on_sale": {
+    "type": "boolean"
+  },
+  "is_purchasable": {
+    "type": "boolean"
+  },
+  "is_virtual": {
+    "type": "boolean"
+  },
+  "mature_height_feet_from": {
+    "type": "integer"
+  },
+  "mature_height_feet_to": {
+    "type": "integer"
+  },
+  "mature_width_feet_from": {
+    "type": "integer"
+  },
+  "mature_width_feet_to": {
+    "type": "integer"
+  },
+  "menu_order": {
+    "type": "integer"
+  },
+  "modified_at": {
+    "type": "date"
+  },
+  "name": {
+    "type": "text",
+    "fields": {
+      "bigrammed": {
+        "type": "text",
+        "analyzer": "english_bigrams"
+      },
+      "keyword": {
+        "type": "keyword",
+        "ignore_above": 256
+      }
+    },
+    "analyzer": "pluralizer"
+  },
+  "parent_id": {
+    "type": "integer"
+  },
+  "plant_type": {
+    "type": "keyword"
+  },
+  "pre_order_date": {
+    "type": "date"
+  },
+  "price": {
+    "type": "integer"
+  },
+  "price_max": {
+    "type": "integer"
+  },
+  "price_min": {
+    "type": "integer"
+  },
+  "product_brand": {
+    "type": "keyword",
+    "fields": {
+      "bigrammed": {
+        "type": "text",
+        "analyzer": "english_bigrams"
+      },
+      "text": {
+        "type": "text"
+      }
+    }
+  },
+  "product_id": {
+    "type": "integer"
+  },
+  "rating": {
+    "type": "double"
+  },
+  "rating_count": {
+    "type": "integer"
+  },
+  "sale_percentage": {
+    "type": "integer"
+  },
+  "sales_orders": {
+    "type": "integer"
+  },
+  "sales_quantity": {
+    "type": "integer"
+  },
+  "sales_total": {
+    "type": "float"
+  },
+  "search_categories": {
+    "type": "text",
+    "fields": {
+      "bigrammed": {
+        "type": "text",
+        "analyzer": "english_bigrams"
+      }
+    }
+  },
+  "size_name": {
+    "type": "keyword"
+  },
+  "sku": {
+    "type": "keyword"
+  },
+  "special_features": {
+    "type": "keyword",
+    "fields": {
+      "bigrammed": {
+        "type": "text",
+        "analyzer": "english_bigrams"
+      },
+      "text": {
+        "type": "text"
+      }
+    }
+  },
+  "status": {
+    "type": "keyword"
+  },
+  "stock_quantity": {
+    "type": "integer"
+  },
+  "style": {
+    "type": "keyword",
+    "fields": {
+      "bigrammed": {
+        "type": "text",
+        "analyzer": "english_bigrams"
+      },
+      "text": {
+        "type": "text"
+      }
+    }
+  },
+  "sun_needs": {
+    "type": "keyword"
+  },
+  "tags": {
+    "type": "keyword",
+    "fields": {
+      "bigrammed": {
+        "type": "text",
+        "analyzer": "english_bigrams"
+      },
+      "text": {
+        "type": "text",
+        "analyzer": "pluralizer"
+      }
+    }
+  },
+  "type": {
+    "type": "keyword"
+  },
+  "url": {
+    "type": "keyword"
+  },
+  "water_needs": {
+    "type": "keyword"
+  }
+}
