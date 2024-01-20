@@ -152,9 +152,11 @@ func (i *IndicesGetMappingCommand) RunIntoGlazeProcessor(
 		return nil
 	}
 
-	var mappingResponse MappingsResponse
-	mappingResponse = orderedmap.New[string, Index]()
+	mappingResponse := orderedmap.New[string, Index]()
 	err = json.Unmarshal(body, mappingResponse)
+	if err != nil {
+		return err
+	}
 
 	for s_ := mappingResponse.Oldest(); s_ != nil; s_ = s_.Next() {
 		indexName, index := s_.Key, s_.Value

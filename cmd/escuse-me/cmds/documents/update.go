@@ -188,6 +188,9 @@ func (c *UpdateDocumentCommand) RunIntoGlazeProcessor(
 		strings.NewReader(s.Script),
 		options...,
 	)
+	if err != nil {
+		return err
+	}
 
 	defer func(Body io.ReadCloser) {
 		_ = Body.Close()
