@@ -38,7 +38,7 @@ func (q *QueriesCommand) RunIntoGlazeProcessor(
 			types.MRP("name", description.Name),
 			types.MRP("short", description.Short),
 			types.MRP("long", description.Long),
-			types.MRP("query", query.Query),
+			types.MRP("query", query.QueryStringTemplate),
 			types.MRP("source", description.Source),
 		)
 		err := gp.AddRow(ctx, obj)

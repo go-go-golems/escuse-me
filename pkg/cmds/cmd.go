@@ -16,6 +16,7 @@ import (
 	"github.com/go-go-golems/glazed/pkg/middlewares"
 	"github.com/go-go-golems/glazed/pkg/settings"
 	"github.com/go-go-golems/glazed/pkg/types"
+	"github.com/go-go-golems/go-emrichen/pkg/emrichen"
 	"github.com/pkg/errors"
 	"io"
 	"strings"
@@ -30,13 +31,18 @@ type EscuseMeCommandDescription struct {
 	Arguments []*parameters.ParameterDefinition `yaml:"arguments,omitempty"`
 
 	QueryTemplate string `yaml:"queryTemplate,omitempty"`
+	// Query is used for single file escuse-me commands, while QueryTemplate is used for directories,
+	// where main.yaml is used to describe the command and the file given in the query template
+	// used for the query template.
+	Query *RawNode `yaml:"query,omitempty"`
 }
 
 type ESClientFactory func(*layers.ParsedLayers) (*elasticsearch.Client, error)
 
 type ElasticSearchCommand struct {
 	*cmds.CommandDescription `yaml:",inline"`
-	Query                    string `yaml:"query"`
+	QueryStringTemplate      string `yaml:"query"`
+	QueryNodeTemplate        *RawNode
 	clientFactory            ESClientFactory
 }
 
@@ -45,7 +51,8 @@ var _ cmds.GlazeCommand = &ElasticSearchCommand{}
 func NewElasticSearchCommand(
 	description *cmds.CommandDescription,
 	clientFactory ESClientFactory,
-	query string,
+	queryStringTemplate string,
+	queryNodeTemplate *RawNode,
 ) (*ElasticSearchCommand, error) {
 	glazedParameterLayer, err := settings.NewGlazedParameterLayers()
 	if err != nil {
@@ -62,9 +69,10 @@ func NewElasticSearchCommand(
 	description.Layers.AppendLayers(glazedParameterLayer, esConnectionLayer, esHelpersLayer)
 
 	return &ElasticSearchCommand{
-		CommandDescription: description,
-		clientFactory:      clientFactory,
-		Query:              query,
+		CommandDescription:  description,
+		clientFactory:       clientFactory,
+		QueryStringTemplate: queryStringTemplate,
+		QueryNodeTemplate:   queryNodeTemplate,
 	}, nil
 }
 
@@ -122,13 +130,42 @@ func (esc *ElasticSearchCommand) RunIntoGlazeProcessor(
 }
 
 func (esc *ElasticSearchCommand) RenderQuery(parameters map[string]interface{}) (string, error) {
-	tmpl := templating.CreateTemplate("query")
-	tmpl, err := tmpl.Parse(esc.Query)
+	if esc.QueryStringTemplate != "" {
+		tmpl := templating.CreateTemplate("query")
+		tmpl, err := tmpl.Parse(esc.QueryStringTemplate)
+		if err != nil {
+			return "", err
+		}
+
+		return templating.RenderTemplate(tmpl, parameters)
+	}
+
+	if esc.QueryNodeTemplate == nil {
+		return "", errors.New("No query template found")
+	}
+
+	ei, err := emrichen.NewInterpreter(emrichen.WithVars(parameters))
 	if err != nil {
 		return "", err
 	}
 
-	return templating.RenderTemplate(tmpl, parameters)
+	v, err := ei.Process(esc.QueryNodeTemplate.node)
+	if err != nil {
+		return "", err
+	}
+
+	query := interface{}(nil)
+	err = v.Decode(&query)
+	if err != nil {
+		return "", err
+	}
+
+	s, err := json.MarshalIndent(query, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	return string(s), nil
 }
 
 func (esc *ElasticSearchCommand) RenderQueryToJSON(parameters map[string]interface{}) (string, error) {

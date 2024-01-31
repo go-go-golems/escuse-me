@@ -1,0 +1,16 @@
+name: manuel
+short: Search a simple filter field
+flags:
+  - name: first
+    type: string
+    default: "first"
+    help: First name
+query:
+  query:
+    # simple query just searching the first field
+    fuzzy:
+      first:
+        value: !Var first
+        fuzziness: "AUTO"
+        prefix_length: 0
+        max_expansions: 50

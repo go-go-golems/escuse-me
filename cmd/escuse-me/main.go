@@ -203,7 +203,7 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 			ret := []types.Row{row}
 			switch c := command.(type) {
 			case *es_cmds.ElasticSearchCommand:
-				row.Set("query", c.Query)
+				row.Set("query", c.QueryStringTemplate)
 				row.Set("type", "escuse-me")
 			default:
 			}

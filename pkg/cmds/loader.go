@@ -30,6 +30,15 @@ type ElasticSearchCommandLoader struct {
 	clientFactory ESClientFactory
 }
 
+type RawNode struct {
+	node *yaml.Node
+}
+
+func (n *RawNode) UnmarshalYAML(value *yaml.Node) error {
+	n.node = value
+	return nil
+}
+
 var _ loaders.CommandLoader = (*ElasticSearchCommandLoader)(nil)
 
 func NewElasticSearchCommandLoader(
@@ -50,6 +59,10 @@ func (escl *ElasticSearchCommandLoader) IsFileSupported(f fs.FS, fileName string
 		return false
 	}
 
+	if strings.HasSuffix(fileName, ".yaml") {
+		return true
+	}
+
 	return strings.HasSuffix(fileName, ".escuse-me") && fi.IsDir()
 }
 
@@ -59,6 +72,81 @@ func (escl *ElasticSearchCommandLoader) LoadCommands(
 	options []cmds.CommandDescriptionOption,
 	aliasOptions []alias.Option,
 ) ([]cmds.Command, error) {
+	fi, err := fs.Stat(f, entryName)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Could not stat entry %s", entryName)
+	}
+
+	if fi.IsDir() {
+		return escl.loadCommandsFromDir(f, entryName, options, aliasOptions)
+	}
+
+	return escl.loadCommandsFromFile(f, entryName, options, aliasOptions)
+}
+
+func (escl *ElasticSearchCommandLoader) loadCommandsFromFile(
+	f fs.FS,
+	entryName string,
+	options []cmds.CommandDescriptionOption,
+	aliasOptions []alias.Option,
+) ([]cmds.Command, error) {
+	s, err := f.Open(entryName)
+	if err != nil {
+		// we don't allow nesting in .escuse-me dirs
+		return nil, errors.Wrapf(err, "Could not open main.yaml file for command %s", entryName)
+	}
+	defer func(r fs.File) {
+		_ = r.Close()
+	}(s)
+
+	parents := loaders.GetParentsFromDir(entryName)
+	// strip last path element from parents
+	if len(parents) > 0 {
+		parents = parents[:len(parents)-1]
+	}
+
+	escd := &EscuseMeCommandDescription{
+		Flags:     []*parameters.ParameterDefinition{},
+		Arguments: []*parameters.ParameterDefinition{},
+	}
+	err = yaml.NewDecoder(s).Decode(escd)
+	if err != nil {
+		return nil, err
+	}
+
+	options_ := []cmds.CommandDescriptionOption{
+		cmds.WithName(escd.Name),
+		cmds.WithShort(escd.Short),
+		cmds.WithLong(escd.Long),
+		cmds.WithFlags(escd.Flags...),
+		cmds.WithArguments(escd.Arguments...),
+		cmds.WithParents(parents...),
+		cmds.WithLayout(&layout.Layout{
+			Sections: escd.Layout,
+		}),
+	}
+	options_ = append(options_, options...)
+
+	description := cmds.NewCommandDescription(
+		escd.Name,
+		options_...,
+	)
+
+	esc, err := NewElasticSearchCommand(description, escl.clientFactory, "", escd.Query)
+	if err != nil {
+		return nil, err
+	}
+
+	return []cmds.Command{esc}, nil
+}
+
+func (escl *ElasticSearchCommandLoader) loadCommandsFromDir(
+	f fs.FS,
+	entryName string,
+	options []cmds.CommandDescriptionOption,
+	aliasOptions []alias.Option,
+) ([]cmds.Command, error) {
+
 	s, err := f.Open(path.Join(entryName, "main.yaml"))
 	if err != nil {
 		// we don't allow nesting in .escuse-me dirs
@@ -116,7 +204,7 @@ func (escl *ElasticSearchCommandLoader) LoadCommands(
 		options_...,
 	)
 
-	esc, err := NewElasticSearchCommand(description, escl.clientFactory, queryTemplate)
+	esc, err := NewElasticSearchCommand(description, escl.clientFactory, queryTemplate, nil)
 	if err != nil {
 		return nil, err
 	}
