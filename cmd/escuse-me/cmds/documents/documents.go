@@ -62,5 +62,15 @@ func AddToRootCommand(rootCmd *cobra.Command) error {
 	}
 	documentsCommand.AddCommand(bulkCmd)
 
+	bulkIndexCommand, err := NewBulkIndexCommand()
+	if err != nil {
+		return err
+	}
+	bulkIndexCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(bulkIndexCommand)
+	if err != nil {
+		return err
+	}
+	documentsCommand.AddCommand(bulkIndexCmd)
+
 	return nil
 }

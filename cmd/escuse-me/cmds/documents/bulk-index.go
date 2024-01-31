@@ -1,64 +1,48 @@
 package documents
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	es_layers "github.com/go-go-golems/escuse-me/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
-	"github.com/go-go-golems/glazed/pkg/helpers/files"
 	"github.com/go-go-golems/glazed/pkg/middlewares"
 	"github.com/go-go-golems/glazed/pkg/settings"
 	"github.com/go-go-golems/glazed/pkg/types"
 	"github.com/pkg/errors"
-	orderedmap "github.com/wk8/go-ordered-map/v2"
 	"io"
 )
 
-type BulkCommand struct {
+func interleaveBulkIndexObjects(objects []map[string]interface{}, index string) (io.Reader, error) {
+	var buffer bytes.Buffer
+
+	for _, object := range objects {
+		jsonLine, err := json.Marshal(object)
+		if err != nil {
+			return nil, err
+		}
+		// Construct the index command with the specified index.
+		// You might need to adjust this if you have a more complex requirement for the index command.
+		indexCommand := fmt.Sprintf(`{ "index" : { "_index" : "%s" } }%s`, index, "\n")
+		buffer.WriteString(indexCommand)
+		buffer.Write(jsonLine)
+		buffer.WriteString("\n")
+	}
+
+	return &buffer, nil
+}
+
+type BulkIndexCommand struct {
 	*cmds.CommandDescription
 }
 
-var _ cmds.GlazeCommand = &BulkCommand{}
+var _ cmds.GlazeCommand = &BulkIndexCommand{}
 
-type BulkErrorResponse struct {
-	Errors bool `json:"errors"`
-	Items  []map[string]struct {
-		Error struct {
-			Type   string `json:"type"`
-			Reason string `json:"reason"`
-		} `json:"error,omitempty"`
-	} `json:"items"`
-}
-
-type BulkResponse struct {
-	Errors bool `json:"errors"`
-	Items  []struct {
-		Index *struct {
-			Index   string `json:"_index"`
-			ID      string `json:"_id"`
-			Version int    `json:"_version"`
-			Result  string `json:"result"`
-			Shards  struct {
-				Total      int `json:"total"`
-				Successful int `json:"successful"`
-				Failed     int `json:"failed"`
-			} `json:"_shards"`
-			SeqNo       int64 `json:"_seq_no"`
-			PrimaryTerm int   `json:"_primary_term"`
-			Status      int   `json:"status"`
-		} `json:"index"`
-	} `json:"items"`
-}
-
-type GenericBulkResponse struct {
-	Errors bool                                                     `json:"errors"`
-	Items  []map[string]*orderedmap.OrderedMap[string, interface{}] `json:"items"`
-}
-
-func NewBulkCommand() (*BulkCommand, error) {
+func NewBulkIndexCommand() (*BulkIndexCommand, error) {
 	glazedParameterLayer, err := settings.NewGlazedParameterLayers()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create Glazed parameter layer")
@@ -68,9 +52,9 @@ func NewBulkCommand() (*BulkCommand, error) {
 		return nil, errors.Wrap(err, "could not create ES parameter layer")
 	}
 
-	return &BulkCommand{
+	return &BulkIndexCommand{
 		CommandDescription: cmds.NewCommandDescription(
-			"bulk",
+			"bulk-index",
 			cmds.WithShort("Bulk indexes documents"),
 			cmds.WithFlags(
 				parameters.NewParameterDefinition(
@@ -128,8 +112,8 @@ func NewBulkCommand() (*BulkCommand, error) {
 			cmds.WithArguments(
 				parameters.NewParameterDefinition(
 					"files",
-					parameters.ParameterTypeStringList,
-					parameters.WithHelp("Files containing bulk index commands, refer to https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html#bulk-api-request-body for more information"),
+					parameters.ParameterTypeObjectListFromFiles,
+					parameters.WithHelp("Files containing bulk index documents, the command will interleave it with ES index commands"),
 					parameters.WithRequired(true),
 				),
 			),
@@ -138,26 +122,26 @@ func NewBulkCommand() (*BulkCommand, error) {
 	}, nil
 }
 
-type BulkSettings struct {
-	Index               *string   `glazed.parameter:"index"`
-	Pipeline            *string   `glazed.parameter:"pipeline"`
-	Refresh             *string   `glazed.parameter:"refresh"`
-	Routing             *string   `glazed.parameter:"routing"`
-	Source              *[]string `glazed.parameter:"source"`
-	FullSource          bool      `glazed.parameter:"full-source"`
-	SourceExcludes      *[]string `glazed.parameter:"source_excludes"`
-	SourceIncludes      *[]string `glazed.parameter:"source_includes"`
-	WaitForActiveShards *string   `glazed.parameter:"wait_for_active_shards"`
-	RequireAlias        *bool     `glazed.parameter:"require_alias"`
-	Files               []string  `glazed.parameter:"files"`
+type BulkIndexSettings struct {
+	Index               *string                  `glazed.parameter:"index"`
+	Pipeline            *string                  `glazed.parameter:"pipeline"`
+	Refresh             *string                  `glazed.parameter:"refresh"`
+	Routing             *string                  `glazed.parameter:"routing"`
+	Source              *[]string                `glazed.parameter:"source"`
+	FullSource          bool                     `glazed.parameter:"full-source"`
+	SourceExcludes      *[]string                `glazed.parameter:"source_excludes"`
+	SourceIncludes      *[]string                `glazed.parameter:"source_includes"`
+	WaitForActiveShards *string                  `glazed.parameter:"wait_for_active_shards"`
+	RequireAlias        *bool                    `glazed.parameter:"require_alias"`
+	Files               []map[string]interface{} `glazed.parameter:"files"`
 }
 
-func (c *BulkCommand) RunIntoGlazeProcessor(
+func (c *BulkIndexCommand) RunIntoGlazeProcessor(
 	ctx context.Context,
 	parsedLayers *layers.ParsedLayers,
 	gp middlewares.Processor,
 ) error {
-	s := &BulkSettings{}
+	s := &BulkIndexSettings{}
 	if err := parsedLayers.InitializeStruct(layers.DefaultSlug, s); err != nil {
 		return err
 	}
@@ -201,7 +185,7 @@ func (c *BulkCommand) RunIntoGlazeProcessor(
 		options = append(options, es.Bulk.WithRequireAlias(*s.RequireAlias))
 	}
 
-	bodyReader, err := files.ConcatFiles(s.Files...)
+	bodyReader, err := interleaveBulkIndexObjects(s.Files, *s.Index)
 	if err != nil {
 		return err
 	}
@@ -224,7 +208,7 @@ func (c *BulkCommand) RunIntoGlazeProcessor(
 	}
 
 	var bulkErrorResponse BulkErrorResponse
-	if err := json.Unmarshal(body, &bulkErrorResponse); err != nil {
+	if err = json.Unmarshal(body, &bulkErrorResponse); err != nil {
 		return err
 	}
 
@@ -244,28 +228,17 @@ func (c *BulkCommand) RunIntoGlazeProcessor(
 		return nil
 	}
 
-	var bulkGenericResponse GenericBulkResponse
-	if err := json.Unmarshal(body, &bulkGenericResponse); err != nil {
+	var bulkResponse BulkResponse
+	if err = json.Unmarshal(body, &bulkResponse); err != nil {
 		return err
 	}
 
-	for _, item := range bulkGenericResponse.Items {
-		for action, result := range item {
-			row := types.NewRow(
-				types.MRP("action", action),
-			)
-			for l := result.Oldest(); l != nil; l = l.Next() {
-				k, v := l.Key, l.Value
-				row.Set(k, v)
-			}
+	for _, item := range bulkResponse.Items {
+		if item.Index != nil {
+			row := types.NewRowFromStruct(item.Index, true)
 			_ = gp.AddRow(ctx, row)
 		}
 	}
 
-	responseRow := types.NewRow()
-	if err := json.Unmarshal(body, &responseRow); err != nil {
-		return err
-	}
-
-	return gp.AddRow(ctx, responseRow)
+	return nil
 }
