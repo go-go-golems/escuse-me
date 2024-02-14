@@ -18,6 +18,7 @@ import (
 	"github.com/go-go-golems/glazed/pkg/types"
 	"github.com/go-go-golems/go-emrichen/pkg/emrichen"
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v3"
 	"io"
 	"strings"
 )
@@ -112,7 +113,7 @@ func (esc *ElasticSearchCommand) RunIntoGlazeProcessor(
 			fmt.Println(query)
 			return &cmds.ExitWithoutGlazeError{}
 		} else {
-			query, err := esc.RenderQuery(ps_)
+			query, err := esc.RenderQueryToYAML(ps_)
 			if err != nil {
 				return errors.Wrapf(err, "Could not generate query")
 			}
@@ -129,7 +130,25 @@ func (esc *ElasticSearchCommand) RunIntoGlazeProcessor(
 	return err
 }
 
-func (esc *ElasticSearchCommand) RenderQuery(parameters map[string]interface{}) (string, error) {
+func (esc *ElasticSearchCommand) renderNodeQuery(parameters map[string]interface{}) (*yaml.Node, error) {
+	if esc.QueryNodeTemplate == nil {
+		return nil, errors.New("No query template found")
+	}
+
+	ei, err := emrichen.NewInterpreter(emrichen.WithVars(parameters))
+	if err != nil {
+		return nil, err
+	}
+
+	v, err := ei.Process(esc.QueryNodeTemplate.node)
+	if err != nil {
+		return nil, err
+	}
+
+	return v, nil
+}
+
+func (esc *ElasticSearchCommand) RenderQueryToYAML(parameters map[string]interface{}) (string, error) {
 	if esc.QueryStringTemplate != "" {
 		tmpl := templating.CreateTemplate("query")
 		tmpl, err := tmpl.Parse(esc.QueryStringTemplate)
@@ -137,44 +156,59 @@ func (esc *ElasticSearchCommand) RenderQuery(parameters map[string]interface{}) 
 			return "", err
 		}
 
-		return templating.RenderTemplate(tmpl, parameters)
+		s, err := templating.RenderTemplate(tmpl, parameters)
+		if err != nil {
+			return "", err
+		}
+
+		return s, nil
 	}
 
-	if esc.QueryNodeTemplate == nil {
-		return "", errors.New("No query template found")
-	}
-
-	ei, err := emrichen.NewInterpreter(emrichen.WithVars(parameters))
-	if err != nil {
-		return "", err
-	}
-
-	v, err := ei.Process(esc.QueryNodeTemplate.node)
+	node, err := esc.renderNodeQuery(parameters)
 	if err != nil {
 		return "", err
 	}
 
 	query := interface{}(nil)
-	err = v.Decode(&query)
+	err = node.Decode(&query)
 	if err != nil {
 		return "", err
 	}
 
-	s, err := json.MarshalIndent(query, "", "  ")
+	ys, err := yaml.Marshal(query)
 	if err != nil {
 		return "", err
 	}
 
-	return string(s), nil
+	return string(ys), nil
 }
 
 func (esc *ElasticSearchCommand) RenderQueryToJSON(parameters map[string]interface{}) (string, error) {
-	query, err := esc.RenderQuery(parameters)
+	if esc.QueryStringTemplate != "" {
+		ys, err := esc.RenderQueryToYAML(parameters)
+		if err != nil {
+			return "", err
+		}
+		return files.ConvertYAMLMapToJSON(ys)
+	}
+
+	node, err := esc.renderNodeQuery(parameters)
 	if err != nil {
 		return "", err
 	}
 
-	return files.ConvertYAMLMapToJSON(query)
+	query := interface{}(nil)
+	err = node.Decode(&query)
+	if err != nil {
+		return "", err
+	}
+
+	js, err := json.MarshalIndent(query, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	return string(js), nil
 }
 
 func (esc *ElasticSearchCommand) RunQueryIntoGlaze(

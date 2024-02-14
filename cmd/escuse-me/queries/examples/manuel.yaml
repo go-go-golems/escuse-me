@@ -3,14 +3,70 @@ short: Search a simple filter field
 flags:
   - name: first
     type: string
-    default: "first"
     help: First name
+  - name: second
+    type: string
+    help: Last name
+  - name: all_fields
+    type: bool
+    default: false
+    help: Return all fields
+  - name: source_fields
+    type: stringList
+    help: Fields to return from ES index
 query:
+  _source: !If
+    test: !Var all_fields
+    then: true
+    else: !If
+      test: !Exists source_fields
+      then: !Loop
+        over: !Var source_fields
+        template: !Var item
+      else: !Void
+  debug: !If
+    test: !Exists debug
+    then:
+      input_parameters:
+        first: !Exists first
+        not_first: !Not,Exists first
+        second: !Exists second
+        not_second: !Not,Exists second
+      debug:
+        !If
+        test: !All
+          - !Not,Exists first
+          - !Not,Exists second
+        then: !Format "No first or second name"
+        else: !Format "First name: {first}, second name: {second}"
+    else: !Void
   query:
-    # simple query just searching the first field
-    fuzzy:
-      first:
-        value: !Var first
-        fuzziness: "AUTO"
-        prefix_length: 0
-        max_expansions: 50
+    !If
+    test: !All
+      - !Not,Exists first
+      - !Not,Exists second
+    then:
+      match_all: { }
+    else:
+      bool:
+        must:
+          - !If
+            test: !Exists first
+            then:
+              fuzzy:
+                first:
+                  value: !Var first
+                  fuzziness: 2
+                  prefix_length: 0
+                  max_expansions: 50
+            else: !Void
+          - !If
+            test: !Exists second
+            then:
+              fuzzy:
+                name.second:
+                  value: !Var second
+                  fuzziness: 2
+                  prefix_length: 0
+                  max_expansions: 50
+            else: !Void
