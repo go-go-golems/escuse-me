@@ -36,6 +36,30 @@ func NewGetDocumentCommand() (*GetDocumentCommand, error) {
 		CommandDescription: cmds.NewCommandDescription(
 			"get",
 			cmds.WithShort("Retrieves a document by ID"),
+			cmds.WithLong(`The "get" command retrieves a document from Elasticsearch using its index and unique identifier (ID). 
+You can specify additional parameters to control the retrieval process, such as preference, realtime, refresh, routing, 
+source includes/excludes, version, and version type.
+
+Examples:
+
+# Retrieve a document by specifying the index and ID.
+escuse-me get --index "my-index" --id "my-document-id"
+
+# Retrieve a document with specific fields included from the _source.
+escuse-me get --index "my-index" --id "my-document-id" --_source_includes "field1,field2"
+
+# Retrieve a document with specific fields excluded from the _source.
+escuse-me get --index "my-index" --id "my-document-id" --_source_excludes "field3,field4"
+
+# Retrieve a document with a specific version type.
+escuse-me get --index "my-index" --id "my-document-id" --version 2 --version_type "external_gte"
+
+# Retrieve a document with preference for a specific shard or node.
+escuse-me get --index "my-index" --id "my-document-id" --preference "_local"
+
+# Retrieve a document and refresh the shard before the operation.
+escuse-me get --index "my-index" --id "my-document-id" --refresh
+`),
 			cmds.WithFlags(
 				parameters.NewParameterDefinition(
 					"index",

@@ -72,5 +72,25 @@ func AddToRootCommand(rootCmd *cobra.Command) error {
 	}
 	documentsCommand.AddCommand(bulkIndexCmd)
 
+	multiGetDocumentCommand, err := NewMultiGetDocumentCommand()
+	if err != nil {
+		return err
+	}
+	multiGetDocumentCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(multiGetDocumentCommand)
+	if err != nil {
+		return err
+	}
+	documentsCommand.AddCommand(multiGetDocumentCmd)
+
+	searchCommand, err := NewSearchDocumentCommand()
+	if err != nil {
+		return err
+	}
+	searchCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(searchCommand)
+	if err != nil {
+		return err
+	}
+	documentsCommand.AddCommand(searchCmd)
+
 	return nil
 }

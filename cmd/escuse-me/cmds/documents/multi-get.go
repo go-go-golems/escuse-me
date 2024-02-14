@@ -36,6 +36,27 @@ func NewMultiGetDocumentCommand() (*MultiGetDocumentCommand, error) {
 		CommandDescription: cmds.NewCommandDescription(
 			"mget",
 			cmds.WithShort("Retrieves multiple documents by ID"),
+			cmds.WithLong(`
+The 'mget' command is a wrapper for Elasticsearch's Multi-Get API, allowing you to retrieve multiple documents by their IDs in a single request. This command is particularly useful when you need to fetch a batch of documents without making individual get requests for each one, thus reducing network overhead and improving performance.
+
+Usage examples:
+
+1. Retrieve documents by a list of IDs from a specific index:
+   $ escuse-me mget --index products --ids "1,2,3"
+
+2. Retrieve documents with specific fields only:
+   $ escuse-me mget --index products --ids "1,2,3" --stored_fields "name,price"
+
+3. Retrieve documents while excluding certain fields from the source:
+   $ escuse-me mget --index products --ids "1,2,3" --_source_excludes "description"
+
+4. Retrieve documents with real-time constraint and refresh the relevant shards before retrieval:
+   $ escuse-me mget --index products --ids "1,2,3" --realtime true --refresh true
+
+The command supports various flags to customize the request, such as specifying the index, setting the preference for which node or shard to perform the operation on, and deciding whether to retrieve the documents in real-time or after a refresh. You can also control the routing, and include or exclude fields from the stored fields or the source.
+
+This command is part of the 'escuse-me' suite, which provides a set of tools for interacting with Elasticsearch clusters in a more convenient and user-friendly way. It leverages the power of the go-elasticsearch client and offers additional parameterization and customization through the Glazed parameter layer.
+`),
 			cmds.WithFlags(
 				parameters.NewParameterDefinition(
 					"index",
