@@ -18,6 +18,7 @@ import (
 	"github.com/go-go-golems/glazed/pkg/cmds/loaders"
 	"github.com/go-go-golems/glazed/pkg/help"
 	"github.com/go-go-golems/glazed/pkg/types"
+	parka_doc "github.com/go-go-golems/parka/pkg/doc"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
@@ -118,16 +119,15 @@ var queriesFS embed.FS
 func initRootCmd() (*help.HelpSystem, error) {
 	helpSystem := help.NewHelpSystem()
 	err := helpSystem.LoadSectionsFromFS(docFS, ".")
-	if err != nil {
-		panic(err)
-	}
+	cobra.CheckErr(err)
 
 	helpSystem.SetupCobraRootCommand(rootCmd)
 
+	err = parka_doc.AddDocToHelpSystem(helpSystem)
+	cobra.CheckErr(err)
+
 	err = clay.InitViper("escuse-me", rootCmd)
-	if err != nil {
-		panic(err)
-	}
+	cobra.CheckErr(err)
 	err = clay.InitLogger()
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Error initializing logger: %s\n", err)
