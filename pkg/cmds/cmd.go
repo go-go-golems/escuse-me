@@ -15,9 +15,9 @@ import (
 	"github.com/go-go-golems/glazed/pkg/helpers/templating"
 	"github.com/go-go-golems/glazed/pkg/middlewares"
 	"github.com/go-go-golems/glazed/pkg/settings"
-	"github.com/go-go-golems/glazed/pkg/types"
 	"github.com/go-go-golems/go-emrichen/pkg/emrichen"
 	"github.com/pkg/errors"
+	orderedmap "github.com/wk8/go-ordered-map/v2"
 	"gopkg.in/yaml.v3"
 	"io"
 	"strings"
@@ -268,28 +268,20 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 			return errors.New(errMessage)
 		}
 	}
-	var r map[string]interface{}
-	if err := json.NewDecoder(res.Body).Decode(&r); err != nil {
+
+	var r ElasticSearchResult
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(body, &r); err != nil {
 		return errors.New("Error parsing the response body")
 	}
 
-	hits, ok := r["hits"].(map[string]interface{})
-	if !ok {
-		return errors.New("Could not find hits in response")
-	}
-
-	for _, hit := range hits["hits"].([]interface{}) {
-		hit_ := hit.(map[string]interface{})
-		source, ok := hit_["_source"]
-		if !ok {
-			return errors.New("Could not find _source in hit")
-		}
-		source_, ok := source.(map[string]interface{})
-		if !ok {
-			return errors.New("Could not find _source as map in hit")
-		}
-		row := types.NewRowFromMap(source_)
-		row.Set("_score", hit_["_score"])
+	for _, hit := range r.Hits.Hits {
+		row := hit.Source
+		row.Set("_score", hit.Score)
 		err = gp.AddRow(ctx, row)
 		if err != nil {
 			return err
@@ -299,4 +291,13 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 	}
 
 	return nil
+}
+
+type ElasticSearchResult struct {
+	Hits struct {
+		Hits []struct {
+			Source *orderedmap.OrderedMap[string, interface{}] `json:"_source,omitempty"`
+			Score  float64                                     `json:"_score"`
+		} `json:"hits,omitempty"`
+	} `json:"hits"`
 }
