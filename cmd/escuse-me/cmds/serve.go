@@ -12,6 +12,7 @@ import (
 	"github.com/go-go-golems/parka/pkg/handlers"
 	command_dir "github.com/go-go-golems/parka/pkg/handlers/command-dir"
 	"github.com/go-go-golems/parka/pkg/handlers/config"
+	generic_command "github.com/go-go-golems/parka/pkg/handlers/generic-command"
 	"github.com/go-go-golems/parka/pkg/handlers/template"
 	template_dir "github.com/go-go-golems/parka/pkg/handlers/template-dir"
 	"github.com/go-go-golems/parka/pkg/server"
@@ -145,14 +146,16 @@ func (s *ServeCommand) runWithConfigFile(
 	// NOTE(manuel, 2023-12-13) Why do we append these to the config file?
 	commandDirHandlerOptions = append(
 		commandDirHandlerOptions,
-		command_dir.WithParameterFilterOptions(
-			config.WithLayerDefaults(
-				esConnectionLayer.Layer.GetSlug(),
-				esConnectionLayer.Parameters.ToMap(),
+		command_dir.WithGenericCommandHandlerOptions(
+			generic_command.WithParameterFilterOptions(
+				config.WithLayerDefaults(
+					esConnectionLayer.Layer.GetSlug(),
+					esConnectionLayer.Parameters.ToMap(),
+				),
 			),
+			generic_command.WithDefaultTemplateName("data-tables.tmpl.html"),
+			generic_command.WithDefaultIndexTemplateName("commands.tmpl.html"),
 		),
-		command_dir.WithDefaultTemplateName("data-tables.tmpl.html"),
-		command_dir.WithDefaultIndexTemplateName("commands.tmpl.html"),
 		command_dir.WithDevMode(devMode),
 	)
 
@@ -249,15 +252,17 @@ func (s *ServeCommand) Run(
 	}
 
 	commandDirHandlerOptions := []command_dir.CommandDirHandlerOption{
-		command_dir.WithTemplateLookup(datatables.NewDataTablesLookupTemplate()),
-		command_dir.WithParameterFilterOptions(
-			config.WithLayerDefaults(
-				esClientLayer.Layer.GetSlug(),
-				esClientLayer.Parameters.ToMap(),
+		command_dir.WithGenericCommandHandlerOptions(
+			generic_command.WithTemplateLookup(datatables.NewDataTablesLookupTemplate()),
+			generic_command.WithParameterFilterOptions(
+				config.WithLayerDefaults(
+					esClientLayer.Layer.GetSlug(),
+					esClientLayer.Parameters.ToMap(),
+				),
 			),
+			generic_command.WithDefaultTemplateName("data-tables.tmpl.html"),
+			generic_command.WithDefaultIndexTemplateName(""),
 		),
-		command_dir.WithDefaultTemplateName("data-tables.tmpl.html"),
-		command_dir.WithDefaultIndexTemplateName(""),
 		command_dir.WithDevMode(ss.Dev),
 	}
 
