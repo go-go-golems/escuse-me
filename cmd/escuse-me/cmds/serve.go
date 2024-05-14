@@ -2,7 +2,6 @@ package cmds
 
 import (
 	"context"
-	"fmt"
 	es_cmds "github.com/go-go-golems/escuse-me/pkg/cmds"
 	es_layers "github.com/go-go-golems/escuse-me/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds"
@@ -220,7 +219,7 @@ func (s *ServeCommand) Run(
 	contentDirs := ss.ContentDirs
 
 	if len(contentDirs) > 1 {
-		return fmt.Errorf("only one content directory is supported at the moment")
+		return errors.Errorf("only one content directory is supported at the moment")
 	}
 
 	if len(contentDirs) == 1 {

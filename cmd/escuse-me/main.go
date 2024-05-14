@@ -21,6 +21,7 @@ import (
 	"github.com/go-go-golems/glazed/pkg/help"
 	"github.com/go-go-golems/glazed/pkg/types"
 	parka_doc "github.com/go-go-golems/parka/pkg/doc"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
@@ -108,7 +109,7 @@ var runCommandCmd = &cobra.Command{
 	Short: "Run a command from a file",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		panic(fmt.Errorf("not implemented"))
+		panic(errors.Errorf("not implemented"))
 	},
 }
 
