@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
+	"strings"
+
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/go-go-golems/escuse-me/cmd/escuse-me/pkg/helpers"
 	es_layers "github.com/go-go-golems/escuse-me/pkg/cmds/layers"
@@ -14,8 +17,6 @@ import (
 	"github.com/go-go-golems/glazed/pkg/settings"
 	"github.com/go-go-golems/glazed/pkg/types"
 	"github.com/pkg/errors"
-	"io"
-	"strings"
 )
 
 type UpdateMappingCommand struct {
@@ -48,7 +49,7 @@ func NewUpdateMappingCommand() (*UpdateMappingCommand, error) {
 				parameters.NewParameterDefinition(
 					"mappings",
 					parameters.ParameterTypeFile,
-					parameters.WithHelp("JSON file containing updated index mappings"),
+					parameters.WithHelp("JSON/YAML file containing updated index mappings"),
 					parameters.WithRequired(true),
 				),
 				parameters.NewParameterDefinition(
@@ -81,12 +82,12 @@ func NewUpdateMappingCommand() (*UpdateMappingCommand, error) {
 }
 
 type UpdateMappingSettings struct {
-	Index             string               `glazed.parameter:"index"`
-	Mappings          *parameters.FileData `glazed.parameter:"mappings"`
-	WriteIndexOnly    bool                 `glazed.parameter:"write_index_only"`
-	AllowNoIndices    bool                 `glazed.parameter:"allow_no_indices"`
-	ExpandWildcards   []string             `glazed.parameter:"expand_wildcards"`
-	IgnoreUnavailable bool                 `glazed.parameter:"ignore_unavailable"`
+	Index             string                 `glazed.parameter:"index"`
+	Mappings          map[string]interface{} `glazed.parameter:"mappings"`
+	WriteIndexOnly    bool                   `glazed.parameter:"write_index_only"`
+	AllowNoIndices    bool                   `glazed.parameter:"allow_no_indices"`
+	ExpandWildcards   []string               `glazed.parameter:"expand_wildcards"`
+	IgnoreUnavailable bool                   `glazed.parameter:"ignore_unavailable"`
 }
 
 func (c *UpdateMappingCommand) RunIntoGlazeProcessor(
@@ -104,9 +105,7 @@ func (c *UpdateMappingCommand) RunIntoGlazeProcessor(
 		return err
 	}
 
-	updateMappingRequest := map[string]interface{}{
-		"properties": s.Mappings.ParsedContent,
-	}
+	updateMappingRequest := s.Mappings
 
 	requestBody, err := json.Marshal(updateMappingRequest)
 	if err != nil {
