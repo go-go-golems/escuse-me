@@ -3,6 +3,8 @@ package documents
 import (
 	"context"
 	"encoding/json"
+	"io"
+
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/go-go-golems/escuse-me/cmd/escuse-me/pkg/helpers"
 	es_layers "github.com/go-go-golems/escuse-me/pkg/cmds/layers"
@@ -13,7 +15,6 @@ import (
 	"github.com/go-go-golems/glazed/pkg/settings"
 	"github.com/go-go-golems/glazed/pkg/types"
 	"github.com/pkg/errors"
-	"io"
 )
 
 type GetDocumentCommand struct {
@@ -46,13 +47,13 @@ Examples:
 escuse-me get --index "my-index" --id "my-document-id"
 
 # Retrieve a document with specific fields included from the _source.
-escuse-me get --index "my-index" --id "my-document-id" --_source_includes "field1,field2"
+escuse-me get --index "my-index" --id "my-document-id" --source-includes "field1,field2"
 
 # Retrieve a document with specific fields excluded from the _source.
-escuse-me get --index "my-index" --id "my-document-id" --_source_excludes "field3,field4"
+escuse-me get --index "my-index" --id "my-document-id" --xsource-excludes "field3,field4"
 
 # Retrieve a document with a specific version type.
-escuse-me get --index "my-index" --id "my-document-id" --version 2 --version_type "external_gte"
+escuse-me get --index "my-index" --id "my-document-id" --version 2 --version-type "external_gte"
 
 # Retrieve a document with preference for a specific shard or node.
 escuse-me get --index "my-index" --id "my-document-id" --preference "_local"
@@ -95,12 +96,12 @@ escuse-me get --index "my-index" --id "my-document-id" --refresh
 					parameters.WithHelp("Specific routing value"),
 				),
 				parameters.NewParameterDefinition(
-					"_source_includes",
+					"source_includes",
 					parameters.ParameterTypeStringList,
 					parameters.WithHelp("A list of fields to extract and return from the _source field"),
 				),
 				parameters.NewParameterDefinition(
-					"_source_excludes",
+					"source_excludes",
 					parameters.ParameterTypeStringList,
 					parameters.WithHelp("A list of fields to exclude from the returned _source field"),
 				),
@@ -115,6 +116,12 @@ escuse-me get --index "my-index" --id "my-document-id" --refresh
 					parameters.WithHelp("Specific version type"),
 					parameters.WithChoices("internal", "external", "external_gte"),
 				),
+				parameters.NewParameterDefinition(
+					"flatten_source",
+					parameters.ParameterTypeBool,
+					parameters.WithHelp("Flatten _source fields into the root of the response"),
+					parameters.WithDefault(false),
+				),
 			),
 			cmds.WithLayersList(glazedParameterLayer, esParameterLayer),
 		),
@@ -128,10 +135,11 @@ type GetDocumentSettings struct {
 	Realtime       *bool     `glazed.parameter:"realtime"`
 	Refresh        *bool     `glazed.parameter:"refresh"`
 	Routing        *string   `glazed.parameter:"routing"`
-	SourceIncludes *[]string `glazed.parameter:"_source_includes"`
-	SourceExcludes *[]string `glazed.parameter:"_source_excludes"`
+	SourceIncludes *[]string `glazed.parameter:"source_includes"`
+	SourceExcludes *[]string `glazed.parameter:"source_excludes"`
 	Version        *int      `glazed.parameter:"version"`
 	VersionType    *string   `glazed.parameter:"version_type"`
+	FlattenSource  bool      `glazed.parameter:"flatten_source"`
 }
 
 func (c *GetDocumentCommand) RunIntoGlazeProcessor(
@@ -202,10 +210,22 @@ func (c *GetDocumentCommand) RunIntoGlazeProcessor(
 		return gp.AddRow(ctx, row)
 	}
 
-	responseRow := types.NewRow()
-	if err := json.Unmarshal(body, &responseRow); err != nil {
-		return err
+	var docMap map[string]interface{}
+	if err := json.Unmarshal(body, &docMap); err != nil {
+		return errors.Wrap(err, "could not unmarshal document")
 	}
 
-	return gp.AddRow(ctx, responseRow)
+	if s.FlattenSource {
+		if source, ok := docMap["_source"].(map[string]interface{}); ok {
+			// Remove _source field
+			delete(docMap, "_source")
+			// Add all source fields to the root
+			for k, v := range source {
+				docMap[k] = v
+			}
+		}
+	}
+
+	row := types.NewRowFromMap(docMap)
+	return gp.AddRow(ctx, row)
 }
