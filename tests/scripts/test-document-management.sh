@@ -215,7 +215,7 @@ escuse-me documents delete-by-query \
   --query '{"match_all": {}}' \
   --max-docs 2 \
   --requests-per-second 100 \
-  --refresh true
+  --refresh
 
 pause_for_user "Tests completed. Will clean up test files"
 
