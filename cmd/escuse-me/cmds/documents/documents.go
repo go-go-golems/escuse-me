@@ -92,5 +92,15 @@ func AddToRootCommand(rootCmd *cobra.Command) error {
 	}
 	documentsCommand.AddCommand(searchCmd)
 
+	updateCommand, err := NewUpdateDocumentCommand()
+	if err != nil {
+		return err
+	}
+	updateCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(updateCommand)
+	if err != nil {
+		return err
+	}
+	documentsCommand.AddCommand(updateCmd)
+
 	return nil
 }

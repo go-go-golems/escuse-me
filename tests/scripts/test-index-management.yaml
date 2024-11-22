@@ -1,0 +1,40 @@
+initial_mappings:
+  properties:
+    title:
+      type: text
+      fields:
+        keyword:
+          type: keyword
+    description:
+      type: text
+    created_at:
+      type: date
+
+updated_mappings:
+  properties:
+    title:
+      type: text
+      fields:
+        keyword:
+          type: keyword
+    description:
+      type: text
+    created_at:
+      type: date
+    tags:
+      type: keyword
+    priority:
+      type: integer
+
+# Commands to run:
+# 1. Create index with initial mappings:
+#    escuse-me indices create --index test-index --mappings initial-mappings.yaml
+#
+# 2. Get initial mappings:
+#    escuse-me indices mappings --index test-index
+#
+# 3. Update mappings:
+#    escuse-me indices update-mapping --index test-index --mappings updated-mappings.yaml
+#
+# 4. Get updated mappings:
+#    escuse-me indices mappings --index test-index

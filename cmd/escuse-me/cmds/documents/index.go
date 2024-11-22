@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
+
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/go-go-golems/escuse-me/cmd/escuse-me/pkg/helpers"
 	es_layers "github.com/go-go-golems/escuse-me/pkg/cmds/layers"
@@ -14,7 +16,6 @@ import (
 	"github.com/go-go-golems/glazed/pkg/settings"
 	"github.com/go-go-golems/glazed/pkg/types"
 	"github.com/pkg/errors"
-	"io"
 )
 
 type IndexDocumentCommand struct {
@@ -101,7 +102,7 @@ func NewIndexDocumentCommand() (*IndexDocumentCommand, error) {
 				parameters.NewParameterDefinition(
 					"document",
 					parameters.ParameterTypeObjectFromFile,
-					parameters.WithHelp("The JSON document to be indexed"),
+					parameters.WithHelp("The JSON/YAML document to be indexed"),
 					parameters.WithRequired(true),
 				),
 			),

@@ -1,8 +1,11 @@
 package documents
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"io"
+
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/go-go-golems/escuse-me/cmd/escuse-me/pkg/helpers"
 	es_layers "github.com/go-go-golems/escuse-me/pkg/cmds/layers"
@@ -13,7 +16,6 @@ import (
 	"github.com/go-go-golems/glazed/pkg/settings"
 	"github.com/go-go-golems/glazed/pkg/types"
 	"github.com/pkg/errors"
-	"io"
 )
 
 type MultiGetDocumentCommand struct {
@@ -45,10 +47,10 @@ Usage examples:
    $ escuse-me mget --index products --ids "1,2,3"
 
 2. Retrieve documents with specific fields only:
-   $ escuse-me mget --index products --ids "1,2,3" --stored_fields "name,price"
+   $ escuse-me mget --index products --ids "1,2,3" --stored-fields "name,price"
 
 3. Retrieve documents while excluding certain fields from the source:
-   $ escuse-me mget --index products --ids "1,2,3" --_source_excludes "description"
+   $ escuse-me mget --index products --ids "1,2,3" --source-excludes "description"
 
 4. Retrieve documents with real-time constraint and refresh the relevant shards before retrieval:
    $ escuse-me mget --index products --ids "1,2,3" --realtime true --refresh true
@@ -96,19 +98,25 @@ This command is part of the 'escuse-me' suite, which provides a set of tools for
 					parameters.WithHelp("The stored fields you want to retrieve"),
 				),
 				parameters.NewParameterDefinition(
-					"_source",
+					"source",
 					parameters.ParameterTypeStringList,
 					parameters.WithHelp("The source fields you want to retrieve, or true or false"),
 				),
 				parameters.NewParameterDefinition(
-					"_source_includes",
+					"source_includes",
 					parameters.ParameterTypeStringList,
 					parameters.WithHelp("The fields to include in the returned _source field"),
 				),
 				parameters.NewParameterDefinition(
-					"_source_excludes",
+					"source_excludes",
 					parameters.ParameterTypeStringList,
 					parameters.WithHelp("The fields to exclude from the returned _source field"),
+				),
+				parameters.NewParameterDefinition(
+					"flatten_source",
+					parameters.ParameterTypeBool,
+					parameters.WithHelp("Flatten _source fields into the root of the response"),
+					parameters.WithDefault(false),
 				),
 			),
 			cmds.WithLayersList(glazedParameterLayer, esParameterLayer),
@@ -124,9 +132,10 @@ type MultiGetDocumentSettings struct {
 	Refresh        *bool     `glazed.parameter:"refresh"`
 	Routing        *string   `glazed.parameter:"routing"`
 	StoredFields   *[]string `glazed.parameter:"stored_fields"`
-	Source         *[]string `glazed.parameter:"_source"`
+	Source         *[]string `glazed.parameter:"source"`
 	SourceIncludes *[]string `glazed.parameter:"_source_includes"`
 	SourceExcludes *[]string `glazed.parameter:"_source_excludes"`
+	FlattenSource  bool      `glazed.parameter:"flatten_source"`
 }
 
 func (c *MultiGetDocumentCommand) RunIntoGlazeProcessor(
@@ -177,8 +186,36 @@ func (c *MultiGetDocumentCommand) RunIntoGlazeProcessor(
 		options = append(options, es.Mget.WithSourceExcludes(*s.SourceExcludes...))
 	}
 
+	type mgetDoc struct {
+		Index string `json:"_index,omitempty"`
+		ID    string `json:"_id"`
+	}
+
+	type mgetBody struct {
+		Docs []mgetDoc `json:"docs"`
+	}
+
+	body := mgetBody{
+		Docs: make([]mgetDoc, len(s.IDs)),
+	}
+
+	for i, id := range s.IDs {
+		doc := mgetDoc{
+			ID: id,
+		}
+		if s.Index != nil {
+			doc.Index = *s.Index
+		}
+		body.Docs[i] = doc
+	}
+
+	bodyReader := bytes.NewBuffer(nil)
+	if err := json.NewEncoder(bodyReader).Encode(body); err != nil {
+		return errors.Wrap(err, "could not encode mget body")
+	}
+
 	mgetResponse, err := es.Mget(
-		nil,
+		bodyReader,
 		options...,
 	)
 	if err != nil {
@@ -189,21 +226,48 @@ func (c *MultiGetDocumentCommand) RunIntoGlazeProcessor(
 		_ = Body.Close()
 	}(mgetResponse.Body)
 
-	body, err := io.ReadAll(mgetResponse.Body)
+	body_, err := io.ReadAll(mgetResponse.Body)
 	if err != nil {
 		return err
 	}
-	err_, isError := helpers.ParseErrorResponse(body)
+	err_, isError := helpers.ParseErrorResponse(body_)
 	if isError {
 		row := types.NewRowFromStruct(err_.Error, true)
 		row.Set("status", err_.Status)
 		return gp.AddRow(ctx, row)
 	}
 
-	responseRow := types.NewRow()
-	if err := json.Unmarshal(body, &responseRow); err != nil {
-		return err
+	type mgetResponseType struct {
+		Docs []json.RawMessage `json:"docs"`
 	}
 
-	return gp.AddRow(ctx, responseRow)
+	var response mgetResponseType
+	if err := json.Unmarshal(body_, &response); err != nil {
+		return errors.Wrap(err, "could not unmarshal mget response")
+	}
+
+	for _, doc := range response.Docs {
+		var docMap map[string]interface{}
+		if err := json.Unmarshal(doc, &docMap); err != nil {
+			return errors.Wrap(err, "could not unmarshal document")
+		}
+
+		if s.FlattenSource {
+			if source, ok := docMap["_source"].(map[string]interface{}); ok {
+				// Remove _source field
+				delete(docMap, "_source")
+				// Add all source fields to the root
+				for k, v := range source {
+					docMap[k] = v
+				}
+			}
+		}
+
+		row := types.NewRowFromMap(docMap)
+		if err := gp.AddRow(ctx, row); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

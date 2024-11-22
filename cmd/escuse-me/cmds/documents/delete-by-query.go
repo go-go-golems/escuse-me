@@ -3,7 +3,11 @@ package documents
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"strings"
+
 	"github.com/elastic/go-elasticsearch/v8/esapi"
+	"github.com/go-go-golems/escuse-me/cmd/escuse-me/pkg/helpers"
 	es_layers "github.com/go-go-golems/escuse-me/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
@@ -12,8 +16,6 @@ import (
 	"github.com/go-go-golems/glazed/pkg/settings"
 	"github.com/go-go-golems/glazed/pkg/types"
 	"github.com/pkg/errors"
-	"io"
-	"strings"
 )
 
 type DeleteByQueryCommand struct {
@@ -65,6 +67,7 @@ func NewDeleteByQueryCommand() (*DeleteByQueryCommand, error) {
 		parameters.NewParameterDefinition(
 			"slices",
 			parameters.ParameterTypeString,
+			parameters.WithDefault("auto"),
 			parameters.WithHelp("The number of slices this task should be divided into. Defaults to 1 meaning the task isn't sliced."),
 		),
 		parameters.NewParameterDefinition(
@@ -155,9 +158,19 @@ func (c *DeleteByQueryCommand) RunIntoGlazeProcessor(
 		return errors.Wrap(err, "invalid query JSON")
 	}
 
+	// Wrap the query in a query object
+	wrappedQuery := map[string]interface{}{
+		"query": query,
+	}
+
+	wrappedQueryBytes, err := json.Marshal(wrappedQuery)
+	if err != nil {
+		return errors.Wrap(err, "error marshaling wrapped query")
+	}
+
 	req := esapi.DeleteByQueryRequest{
 		Index:             s.Indices,
-		Body:              strings.NewReader(s.Query),
+		Body:              strings.NewReader(string(wrappedQueryBytes)),
 		Conflicts:         s.Conflicts,
 		MaxDocs:           s.MaxDocs,
 		RequestsPerSecond: s.RequestsPerSecond,
@@ -175,16 +188,21 @@ func (c *DeleteByQueryCommand) RunIntoGlazeProcessor(
 	if err != nil {
 		return errors.Wrap(err, "delete by query request failed")
 	}
-	defer res.Body.Close()
-
-	if res.IsError() {
-		return errors.Errorf("error response status: %d", res.StatusCode)
-	}
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(res.Body)
 
 	// Parse the response body
 	responseBody, err := io.ReadAll(res.Body)
 	if err != nil {
 		return errors.Wrap(err, "error reading response body")
+	}
+
+	err_, isError := helpers.ParseErrorResponse(responseBody)
+	if isError {
+		row := types.NewRowFromStruct(err_.Error, true)
+		row.Set("status", err_.Status)
+		return gp.AddRow(ctx, row)
 	}
 
 	responseRow := types.NewRow()

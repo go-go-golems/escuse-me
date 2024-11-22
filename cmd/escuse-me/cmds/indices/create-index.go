@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
+
 	"github.com/go-go-golems/escuse-me/cmd/escuse-me/pkg/helpers"
 	es_layers "github.com/go-go-golems/escuse-me/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds"
@@ -13,7 +15,6 @@ import (
 	"github.com/go-go-golems/glazed/pkg/settings"
 	"github.com/go-go-golems/glazed/pkg/types"
 	"github.com/pkg/errors"
-	"io"
 )
 
 type CreateIndexCommand struct {
@@ -46,17 +47,17 @@ func NewCreateIndexCommand() (*CreateIndexCommand, error) {
 				parameters.NewParameterDefinition(
 					"settings",
 					parameters.ParameterTypeFile,
-					parameters.WithHelp("JSON file containing index settings"),
+					parameters.WithHelp("JSON/YAML file containing index settings"),
 				),
 				parameters.NewParameterDefinition(
 					"mappings",
 					parameters.ParameterTypeFile,
-					parameters.WithHelp("JSON file containing index mappings"),
+					parameters.WithHelp("JSON/YAML file containing index mappings"),
 				),
 				parameters.NewParameterDefinition(
 					"aliases",
 					parameters.ParameterTypeFile,
-					parameters.WithHelp("JSON file containing index aliases"),
+					parameters.WithHelp("JSON/YAML file containing index aliases"),
 				),
 				parameters.NewParameterDefinition(
 					"wait_for_active_shards",
@@ -70,11 +71,11 @@ func NewCreateIndexCommand() (*CreateIndexCommand, error) {
 }
 
 type CreateIndexSettings struct {
-	Index               string               `glazed.parameter:"index"`
-	Settings            *IndexSettings       `glazed.parameter:"settings,from_json"`
-	Mappings            *parameters.FileData `glazed.parameter:"mappings"`
-	Aliases             *map[string]Alias    `glazed.parameter:"aliases,from_json"`
-	WaitForActiveShards string               `glazed.parameter:"wait_for_active_shards"`
+	Index               string                 `glazed.parameter:"index"`
+	Settings            *IndexSettings         `glazed.parameter:"settings,from_json"`
+	Mappings            map[string]interface{} `glazed.parameter:"mappings"`
+	Aliases             *map[string]Alias      `glazed.parameter:"aliases,from_json"`
+	WaitForActiveShards string                 `glazed.parameter:"wait_for_active_shards"`
 }
 
 type Alias struct {
@@ -120,7 +121,7 @@ func (c *CreateIndexCommand) RunIntoGlazeProcessor(
 		createIndexRequest["settings"] = s.Settings
 	}
 	if s.Mappings != nil {
-		createIndexRequest["mappings"] = s.Mappings.ParsedContent
+		createIndexRequest["mappings"] = s.Mappings
 	}
 	if s.Aliases != nil {
 		createIndexRequest["aliases"] = s.Aliases
