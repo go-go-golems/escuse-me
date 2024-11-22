@@ -3,6 +3,9 @@ package documents
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"strings"
+
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/go-go-golems/escuse-me/cmd/escuse-me/pkg/helpers"
 	es_layers "github.com/go-go-golems/escuse-me/pkg/cmds/layers"
@@ -13,8 +16,6 @@ import (
 	"github.com/go-go-golems/glazed/pkg/settings"
 	"github.com/go-go-golems/glazed/pkg/types"
 	"github.com/pkg/errors"
-	"io"
-	"strings"
 )
 
 type UpdateDocumentCommand struct {
@@ -53,8 +54,12 @@ func NewUpdateDocumentCommand() (*UpdateDocumentCommand, error) {
 				parameters.NewParameterDefinition(
 					"script",
 					parameters.ParameterTypeString,
-					parameters.WithHelp("The script to execute for updating the document"),
-					parameters.WithRequired(true),
+					parameters.WithHelp("The script to be executed"),
+				),
+				parameters.NewParameterDefinition(
+					"script_file",
+					parameters.ParameterTypeFile,
+					parameters.WithHelp("File containing the script to be executed"),
 				),
 				parameters.NewParameterDefinition(
 					"lang",
@@ -100,17 +105,17 @@ func NewUpdateDocumentCommand() (*UpdateDocumentCommand, error) {
 					parameters.WithHelp("Require that the target is an alias"),
 				),
 				parameters.NewParameterDefinition(
-					"_source",
+					"source",
 					parameters.ParameterTypeStringList,
 					parameters.WithHelp("True or false to return the _source field or not, or a list of fields to return"),
 				),
 				parameters.NewParameterDefinition(
-					"_source_excludes",
+					"source_excludes",
 					parameters.ParameterTypeStringList,
 					parameters.WithHelp("A list of source fields to exclude"),
 				),
 				parameters.NewParameterDefinition(
-					"_source_includes",
+					"source_includes",
 					parameters.ParameterTypeStringList,
 					parameters.WithHelp("A list of source fields to include"),
 				),
@@ -121,19 +126,20 @@ func NewUpdateDocumentCommand() (*UpdateDocumentCommand, error) {
 }
 
 type UpdateDocumentSettings struct {
-	Index               string    `glazed.parameter:"index"`
-	ID                  string    `glazed.parameter:"id"`
-	Script              string    `glazed.parameter:"script"`
-	Lang                string    `glazed.parameter:"lang"`
-	RetryOnConflict     int       `glazed.parameter:"retry_on_conflict"`
-	Refresh             *string   `glazed.parameter:"refresh"`
-	WaitForActiveShards *string   `glazed.parameter:"wait_for_active_shards"`
-	IfSeqNo             *int      `glazed.parameter:"if_seq_no"`
-	IfPrimaryTerm       *int      `glazed.parameter:"if_primary_term"`
-	RequireAlias        *bool     `glazed.parameter:"require_alias"`
-	Source              *[]string `glazed.parameter:"_source"`
-	SourceExcludes      *[]string `glazed.parameter:"_source_excludes"`
-	SourceIncludes      *[]string `glazed.parameter:"_source_includes"`
+	Index               string               `glazed.parameter:"index"`
+	ID                  string               `glazed.parameter:"id"`
+	Script              string               `glazed.parameter:"script"`
+	ScriptFile          *parameters.FileData `glazed.parameter:"script_file"`
+	Lang                string               `glazed.parameter:"lang"`
+	RetryOnConflict     int                  `glazed.parameter:"retry_on_conflict"`
+	Refresh             *string              `glazed.parameter:"refresh"`
+	WaitForActiveShards *string              `glazed.parameter:"wait_for_active_shards"`
+	IfSeqNo             *int                 `glazed.parameter:"if_seq_no"`
+	IfPrimaryTerm       *int                 `glazed.parameter:"if_primary_term"`
+	RequireAlias        *bool                `glazed.parameter:"require_alias"`
+	Source              *[]string            `glazed.parameter:"source"`
+	SourceExcludes      *[]string            `glazed.parameter:"source_excludes"`
+	SourceIncludes      *[]string            `glazed.parameter:"source_includes"`
 }
 
 func (c *UpdateDocumentCommand) RunIntoGlazeProcessor(
@@ -153,7 +159,6 @@ func (c *UpdateDocumentCommand) RunIntoGlazeProcessor(
 
 	options := []func(*esapi.UpdateRequest){
 		es.Update.WithContext(ctx),
-		es.Update.WithLang(s.Lang),
 		es.Update.WithRetryOnConflict(s.RetryOnConflict),
 	}
 
@@ -182,10 +187,37 @@ func (c *UpdateDocumentCommand) RunIntoGlazeProcessor(
 		options = append(options, es.Update.WithSourceIncludes(*s.SourceIncludes...))
 	}
 
+	// Create the update request body with proper script structure
+	scriptObj := map[string]interface{}{
+		"source": s.Script,
+	}
+
+	// If a script file is provided, use its content instead
+	if s.ScriptFile != nil {
+		if s.ScriptFile.ParsedContent != nil {
+			scriptObj = s.ScriptFile.ParsedContent.(map[string]interface{})
+		} else {
+			scriptObj["source"] = s.ScriptFile.Content
+		}
+	}
+
+	if s.Lang != "" {
+		scriptObj["lang"] = s.Lang
+	}
+
+	body := map[string]interface{}{
+		"script": scriptObj,
+	}
+
+	bodyBytes, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+
 	updateResp, err := es.Update(
 		s.Index,
 		s.ID,
-		strings.NewReader(s.Script),
+		strings.NewReader(string(bodyBytes)),
 		options...,
 	)
 	if err != nil {
@@ -196,11 +228,11 @@ func (c *UpdateDocumentCommand) RunIntoGlazeProcessor(
 		_ = Body.Close()
 	}(updateResp.Body)
 
-	body, err := io.ReadAll(updateResp.Body)
+	body_, err := io.ReadAll(updateResp.Body)
 	if err != nil {
 		return err
 	}
-	err_, isError := helpers.ParseErrorResponse(body)
+	err_, isError := helpers.ParseErrorResponse(body_)
 	if isError {
 		row := types.NewRowFromStruct(err_.Error, true)
 		row.Set("status", err_.Status)
@@ -208,7 +240,7 @@ func (c *UpdateDocumentCommand) RunIntoGlazeProcessor(
 	}
 
 	responseRow := types.NewRow()
-	if err := json.Unmarshal(body, &responseRow); err != nil {
+	if err := json.Unmarshal(body_, &responseRow); err != nil {
 		return err
 	}
 
