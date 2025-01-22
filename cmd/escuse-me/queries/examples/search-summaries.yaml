@@ -1,0 +1,178 @@
+name: "search-summaries"
+short: "Search through summarization index"
+long: "Search through the multi-document-summarization index with various filters and field controls"
+
+flags:
+  - name: show_vectors
+    type: bool
+    default: false
+    help: "Show vector fields in the output"
+  - name: show_keywords
+    type: bool
+    default: false
+    help: "Show keyword fields in the output"
+  - name: show_yaml
+    type: bool
+    default: false
+    help: "Show YAML metadata field"
+  - name: search
+    type: string
+    help: "Search text across all text fields"
+  - name: title
+    type: string
+    help: "Search in title field"
+  - name: content
+    type: string
+    help: "Search in content field"
+  - name: conversation_snippet
+    type: string
+    help: "Search in conversation snippet field"
+  - name: insight_type
+    type: string
+    help: "Filter by insight type"
+  - name: date_from
+    type: date
+    help: "Start date (YYYY-MM-DD)"
+  - name: date_to
+    type: date
+    help: "End date (YYYY-MM-DD)"
+  - name: goal_category
+    type: string
+    help: "Filter by goal category"
+  - name: goal_timeframe
+    type: string
+    help: "Filter by goal timeframe"
+  - name: has_decisions
+    type: bool
+    help: "Filter by whether summary has decisions"
+  - name: interaction_type
+    type: string
+    help: "Filter by interaction type"
+  - name: primary_focus
+    type: string
+    help: "Search by primary focus"
+  - name: user_id
+    type: string
+    help: "Filter by user ID"
+  - name: thread_id
+    type: string
+    help: "Filter by thread ID"
+  - name: size
+    type: int
+    default: 10
+    help: "Number of results to return"
+
+query:
+  _source: !Concat
+    - ["title", "content", "conversation_snippet", "date", "insight_type", "metadata", "thread_id", "user_id"]
+    - !If
+        test: !Var show_vectors
+        then: ["title_vector", "content_vector", "conversation_snippet_vector", "metadata_vector"]
+        else: !Void
+    - !If
+        test: !Var show_keywords
+        then: ["title_keyword", "content_keyword", "conversation_snippet_keyword"]
+        else: !Void
+    - !If
+        test: !Var show_yaml
+        then: ["metadata_yaml"]
+        else: !Void
+  size: !Var size
+  query:
+    bool:
+      must: !Concat
+        - !If
+            test: !Exists search
+            then:
+              - multi_match:
+                  query: !Var search
+                  fields: [
+                    "title^3",
+                    "content^2",
+                    "conversation_snippet^2",
+                    "metadata.primary_focus",
+                    "metadata.relationship_challenges",
+                    "metadata.specific_areas",
+                    "metadata.technical_context"
+                  ]
+            else: !Void
+        - !If
+            test: !Exists title
+            then:
+              - multi_match:
+                  query: !Var title
+                  fields: ["title", "title_keyword"]
+            else: !Void
+        - !If
+            test: !Exists content
+            then:
+              - multi_match:
+                  query: !Var content
+                  fields: ["content", "content_keyword"]
+            else: !Void
+        - !If
+            test: !Exists conversation_snippet
+            then:
+              - multi_match:
+                  query: !Var conversation_snippet
+                  fields: ["conversation_snippet", "conversation_snippet_keyword"]
+            else: !Void
+        - !If
+            test: !Exists insight_type
+            then:
+              - term:
+                  insight_type: !Var insight_type
+            else: !Void
+        - !If
+            test: !All
+              - !Exists date_from
+              - !Exists date_to
+            then:
+              - range:
+                  date:
+                    gte: !Var date_from
+                    lte: !Var date_to
+            else: !Void
+        - !If
+            test: !Exists goal_category
+            then:
+              - term:
+                  "metadata.goal_category": !Var goal_category
+            else: !Void
+        - !If
+            test: !Exists goal_timeframe
+            then:
+              - term:
+                  "metadata.goal_timeframe": !Var goal_timeframe
+            else: !Void
+        - !If
+            test: !Exists has_decisions
+            then:
+              - term:
+                  "metadata.has_decisions": !Var has_decisions
+            else: !Void
+        - !If
+            test: !Exists interaction_type
+            then:
+              - term:
+                  "metadata.interaction_type": !Var interaction_type
+            else: !Void
+        - !If
+            test: !Exists primary_focus
+            then:
+              - multi_match:
+                  query: !Var primary_focus
+                  fields: ["metadata.primary_focus", "metadata.primary_focus.keyword"]
+            else: !Void
+        - !If
+            test: !Exists user_id
+            then:
+              - term:
+                  user_id: !Var user_id
+            else: !Void
+        - !If
+            test: !Exists thread_id
+            then:
+              - term:
+                  thread_id: !Var thread_id
+            else: !Void 
