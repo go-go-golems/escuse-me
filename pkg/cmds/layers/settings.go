@@ -1,9 +1,14 @@
 package layers
 
 import (
+	"crypto/tls"
 	_ "embed"
+	"net/http"
+	"time"
+
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
+	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
 )
 
 //go:embed "flags/es.yaml"
@@ -16,19 +21,26 @@ type EsParameterLayer struct {
 }
 
 type EsClientSettings struct {
-	Addresses               []string `glazed.parameter:"addresses"`
-	Username                string   `glazed.parameter:"username"`
-	Password                string   `glazed.parameter:"password"`
-	CloudId                 string   `glazed.parameter:"cloud-id"`
-	ApiKey                  string   `glazed.parameter:"api-key"`
-	ServiceToken            string   `glazed.parameter:"service-token"`
-	CertificateFingerprint  string   `glazed.parameter:"certificate-fingerprint"`
-	RetryOnStatus           []int    `glazed.parameter:"retry-on-status"`
-	DisableRetry            bool     `glazed.parameter:"disable-retry"`
-	MaxRetries              int      `glazed.parameter:"max-retries"`
-	EnableMetrics           bool     `glazed.parameter:"enable-metrics"`
-	EnableDebugLogger       bool     `glazed.parameter:"enable-debug-logger"`
-	EnableCompatibilityMode bool     `glazed.parameter:"enable-compatibility-mode"`
+	Addresses               []string             `glazed.parameter:"addresses"`
+	Username                string               `glazed.parameter:"username"`
+	Password                string               `glazed.parameter:"password"`
+	CloudId                 string               `glazed.parameter:"cloud-id"`
+	ApiKey                  string               `glazed.parameter:"api-key"`
+	ServiceToken            string               `glazed.parameter:"service-token"`
+	CertificateFingerprint  string               `glazed.parameter:"certificate-fingerprint"`
+	RetryOnStatus           []int                `glazed.parameter:"retry-on-status"`
+	DisableRetry            bool                 `glazed.parameter:"disable-retry"`
+	MaxRetries              int                  `glazed.parameter:"max-retries"`
+	EnableMetrics           bool                 `glazed.parameter:"enable-metrics"`
+	EnableDebugLogger       bool                 `glazed.parameter:"enable-debug-logger"`
+	EnableCompatibilityMode bool                 `glazed.parameter:"enable-compatibility-mode"`
+	InsecureSkipVerify      bool                 `glazed.parameter:"insecure-skip-verify"`
+	CACert                  *parameters.FileData `glazed.parameter:"ca-cert"`
+	RetryBackoff            *int                 `glazed.parameter:"retry-backoff"`
+	CompressRequestBody     bool                 `glazed.parameter:"compress-request-body"`
+	DiscoverNodesOnStart    bool                 `glazed.parameter:"discover-nodes-on-start"`
+	DiscoverNodesInterval   *int                 `glazed.parameter:"discover-nodes-interval"`
+	DisableMetaHeader       bool                 `glazed.parameter:"disable-meta-header"`
 }
 
 func NewESParameterLayer(options ...layers.ParameterLayerOptions) (*EsParameterLayer, error) {
@@ -73,9 +85,31 @@ func NewESClientFromParsedLayers(
 		EnableMetrics:           settings.EnableMetrics,
 		EnableDebugLogger:       settings.EnableDebugLogger,
 		EnableCompatibilityMode: settings.EnableCompatibilityMode,
-		// TODO(manuel, 2023-02-07) This should be a plunger.Logger
-		Logger: nil,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: settings.InsecureSkipVerify,
+			},
+		},
+		CompressRequestBody:  settings.CompressRequestBody,
+		DiscoverNodesOnStart: settings.DiscoverNodesOnStart,
+		DisableMetaHeader:    settings.DisableMetaHeader,
 	}
+
+	if settings.CACert != nil {
+		cfg.CACert = settings.CACert.RawContent
+	}
+
+	if settings.RetryBackoff != nil {
+		backoff := *settings.RetryBackoff
+		cfg.RetryBackoff = func(attempt int) time.Duration {
+			return time.Duration(backoff) * time.Second
+		}
+	}
+
+	if settings.DiscoverNodesInterval != nil {
+		cfg.DiscoverNodesInterval = time.Duration(*settings.DiscoverNodesInterval) * time.Second
+	}
+
 	es, err := elasticsearch.NewClient(cfg)
 	return es, err
 }

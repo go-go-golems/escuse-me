@@ -57,3 +57,31 @@ flags:
     type: bool
     help: Enable compatibility mode
     default: false
+  - name: insecure-skip-verify
+    type: bool
+    help: Skip TLS certificate verification (insecure)
+    default: false
+  - name: ca-cert
+    type: file
+    help: PEM-encoded certificate authorities file
+    required: false
+  - name: retry-backoff
+    type: int
+    help: Retry backoff duration in seconds (optional)
+    required: false
+  - name: compress-request-body
+    type: bool
+    help: Enable gzip compression for request bodies
+    default: false
+  - name: discover-nodes-on-start
+    type: bool
+    help: Discover nodes when initializing the client
+    default: false
+  - name: discover-nodes-interval
+    type: int
+    help: Interval for periodic node discovery in seconds (optional, disabled if not set)
+    required: false
+  - name: disable-meta-header
+    type: bool
+    help: Disable the additional X-Elastic-Client-Meta HTTP header
+    default: false
