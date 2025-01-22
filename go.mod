@@ -1,15 +1,15 @@
 module github.com/go-go-golems/escuse-me
 
-go 1.22.1
+go 1.23
 
 toolchain go1.23.3
 
 require (
 	github.com/elastic/go-elasticsearch/v8 v8.16.0
-	github.com/go-go-golems/clay v0.1.14
-	github.com/go-go-golems/glazed v0.5.14
-	github.com/go-go-golems/go-emrichen v0.0.2
-	github.com/go-go-golems/parka v0.5.8
+	github.com/go-go-golems/clay v0.1.20
+	github.com/go-go-golems/glazed v0.5.24
+	github.com/go-go-golems/go-emrichen v0.0.3
+	github.com/go-go-golems/parka v0.5.15
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.33.0
 	github.com/spf13/cobra v1.8.1
@@ -70,6 +70,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/jmoiron/sqlx v1.3.5 // indirect
 	github.com/kopoli/go-terminal-size v0.0.0-20170219200355-5c97524c8b54 // indirect
+	github.com/kucherenkovova/safegroup v1.0.2 // indirect
 	github.com/labstack/echo/v4 v4.12.0 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/lib/pq v1.10.9 // indirect
@@ -110,6 +111,7 @@ require (
 	github.com/yuin/goldmark v1.7.8 // indirect
 	github.com/yuin/goldmark-emoji v1.0.3 // indirect
 	github.com/yuin/goldmark-highlighting/v2 v2.0.0-20220924101305-151362477c87 // indirect
+	github.com/ziflex/lecho/v3 v3.6.0 // indirect
 	go.mongodb.org/mongo-driver v1.14.0 // indirect
 	go.opentelemetry.io/otel v1.28.0 // indirect
 	go.opentelemetry.io/otel/metric v1.28.0 // indirect

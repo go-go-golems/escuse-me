@@ -1,0 +1,34 @@
+name: "list-all"
+short: "List all documents in an index"
+long: "Lists all documents in the specified Elasticsearch index. Supports pagination through size and from parameters."
+
+flags:
+  - name: size
+    type: int
+    default: 10
+    help: "Number of documents to return"
+  - name: from
+    type: int
+    default: 0
+    help: "Starting offset for pagination"
+  - name: sort
+    type: string
+    help: "Optional field to sort by (format: field:asc or field:desc)"
+  - name: source_fields
+    type: stringList
+    help: "List of source fields to return (returns all fields if not specified)"
+
+query:
+  query:
+    match_all: {}
+  size: !Var size
+  from: !Var from
+  _source: !If
+    test: !Exists source_fields
+    then: !Var source_fields
+    else: true
+  sort: !If
+    test: !Exists sort
+    then:
+      - !Var sort
+    else: !Void 
