@@ -7,7 +7,6 @@ import (
 	edit_command "github.com/go-go-golems/clay/pkg/cmds/edit-command"
 	ls_commands "github.com/go-go-golems/clay/pkg/cmds/ls-commands"
 	"github.com/go-go-golems/clay/pkg/repositories"
-	"github.com/go-go-golems/clay/pkg/sql"
 	cli_cmds "github.com/go-go-golems/escuse-me/cmd/escuse-me/cmds"
 	"github.com/go-go-golems/escuse-me/cmd/escuse-me/cmds/documents"
 	"github.com/go-go-golems/escuse-me/cmd/escuse-me/cmds/indices"
@@ -263,7 +262,7 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	if err != nil {
 		return err
 	}
-	cobraListCommandsCommand, err := sql.BuildCobraCommandWithSqletonMiddlewares(listCommandsCommand)
+	cobraListCommandsCommand, err := cli.BuildCobraCommandFromGlazeCommand(listCommandsCommand)
 	if err != nil {
 		return err
 	}
@@ -273,7 +272,7 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	if err != nil {
 		return err
 	}
-	cobraEditCommandCommand, err := sql.BuildCobraCommandWithSqletonMiddlewares(editCommandCommand)
+	cobraEditCommandCommand, err := cli.BuildCobraCommandFromCommand(editCommandCommand)
 	if err != nil {
 		return err
 	}
