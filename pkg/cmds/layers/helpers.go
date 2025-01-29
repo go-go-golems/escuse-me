@@ -11,6 +11,7 @@ type ESHelperSettings struct {
 	PrintQuery bool   `glazed.parameter:"print-query"`
 	Explain    bool   `glazed.parameter:"explain"`
 	Index      string `glazed.parameter:"es-index"`
+	RawResults bool   `glazed.parameter:"raw-results"`
 }
 
 func NewESHelpersParameterLayer(
@@ -33,6 +34,12 @@ func NewESHelpersParameterLayer(
 			"es-index",
 			parameters.ParameterTypeString,
 			parameters.WithHelp("The index to search in"),
+		),
+		parameters.NewParameterDefinition(
+			"raw-results",
+			parameters.ParameterTypeBool,
+			parameters.WithHelp("Whether to return raw results"),
+			parameters.WithDefault(false),
 		),
 	))
 	ret, err := layers.NewParameterLayer(ESHelpersSlug, "ES Helpers", options_...)

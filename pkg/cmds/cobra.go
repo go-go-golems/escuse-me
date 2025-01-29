@@ -45,6 +45,7 @@ func GetCobraCommandEscuseMeMiddlewares(
 		middlewares.WrapWithWhitelistedLayers(
 			[]string{
 				layers.EsConnectionSlug,
+				layers.ESHelpersSlug,
 			},
 			middlewares.GatherFlagsFromViper(parameters.WithParseStepSource("viper")),
 		),

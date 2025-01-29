@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"strings"
+
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	es_layers "github.com/go-go-golems/escuse-me/pkg/cmds/layers"
@@ -19,8 +22,6 @@ import (
 	"github.com/pkg/errors"
 	orderedmap "github.com/wk8/go-ordered-map/v2"
 	"gopkg.in/yaml.v3"
-	"io"
-	"strings"
 )
 
 type EscuseMeCommandDescription struct {
@@ -31,6 +32,7 @@ type EscuseMeCommandDescription struct {
 	Flags     []*parameters.ParameterDefinition `yaml:"flags,omitempty"`
 	Arguments []*parameters.ParameterDefinition `yaml:"arguments,omitempty"`
 
+	DefaultIndex  string `yaml:"default-index,omitempty"`
 	QueryTemplate string `yaml:"queryTemplate,omitempty"`
 	// Query is used for single file escuse-me commands, while QueryTemplate is used for directories,
 	// where main.yaml is used to describe the command and the file given in the query template
@@ -44,6 +46,7 @@ type ElasticSearchCommand struct {
 	*cmds.CommandDescription `yaml:",inline"`
 	QueryStringTemplate      string `yaml:"query"`
 	QueryNodeTemplate        *RawNode
+	DefaultIndex             string `yaml:"default-index,omitempty"`
 	clientFactory            ESClientFactory
 }
 
@@ -54,6 +57,7 @@ func NewElasticSearchCommand(
 	clientFactory ESClientFactory,
 	queryStringTemplate string,
 	queryNodeTemplate *RawNode,
+	defaultIndex string,
 ) (*ElasticSearchCommand, error) {
 	glazedParameterLayer, err := settings.NewGlazedParameterLayers()
 	if err != nil {
@@ -74,6 +78,7 @@ func NewElasticSearchCommand(
 		clientFactory:       clientFactory,
 		QueryStringTemplate: queryStringTemplate,
 		QueryNodeTemplate:   queryNodeTemplate,
+		DefaultIndex:        defaultIndex,
 	}, nil
 }
 
@@ -244,6 +249,10 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 	os = append(os, es.Search.WithExplain(esHelperSettings.Explain))
 	if esHelperSettings.Index != "" {
 		os = append(os, es.Search.WithIndex(esHelperSettings.Index))
+	} else if esc.DefaultIndex != "" {
+		os = append(os, es.Search.WithIndex(esc.DefaultIndex))
+	} else {
+		return errors.New("No index specified")
 	}
 
 	res, err := es.Search(os...)
@@ -269,12 +278,23 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 		}
 	}
 
-	var r ElasticSearchResult
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return err
 	}
 
+	if esHelperSettings.RawResults {
+		// For raw results, just output the entire response as a single row
+		row := orderedmap.New[string, interface{}]()
+		row.Set("raw_results", json.RawMessage(body))
+		err = gp.AddRow(ctx, row)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	var r ElasticSearchResult
 	if err := json.Unmarshal(body, &r); err != nil {
 		return errors.New("Error parsing the response body")
 	}

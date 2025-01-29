@@ -132,7 +132,13 @@ func (escl *ElasticSearchCommandLoader) loadCommandsFromFile(
 		options_...,
 	)
 
-	esc, err := NewElasticSearchCommand(description, escl.clientFactory, "", escd.Query)
+	esc, err := NewElasticSearchCommand(
+		description,
+		escl.clientFactory,
+		"",
+		escd.Query,
+		escd.DefaultIndex,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +210,13 @@ func (escl *ElasticSearchCommandLoader) loadCommandsFromDir(
 		options_...,
 	)
 
-	esc, err := NewElasticSearchCommand(description, escl.clientFactory, queryTemplate, nil)
+	esc, err := NewElasticSearchCommand(
+		description,
+		escl.clientFactory,
+		queryTemplate,
+		escd.Query,
+		escd.DefaultIndex,
+	)
 	if err != nil {
 		return nil, err
 	}
