@@ -3,6 +3,8 @@ package main
 import (
 	"embed"
 	"fmt"
+	"os"
+
 	clay "github.com/go-go-golems/clay/pkg"
 	edit_command "github.com/go-go-golems/clay/pkg/cmds/edit-command"
 	ls_commands "github.com/go-go-golems/clay/pkg/cmds/ls-commands"
@@ -23,7 +25,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"os"
 )
 
 var rootCmd = &cobra.Command{

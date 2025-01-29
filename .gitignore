@@ -18,3 +18,4 @@ dist/
 dir-env
 
 .envrc
+.history
