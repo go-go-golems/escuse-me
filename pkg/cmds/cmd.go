@@ -364,7 +364,12 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 	if esHelperSettings.RawResults {
 		// For raw results, just output the entire response as a single row
 		row := orderedmap.New[string, interface{}]()
-		row.Set("raw_results", json.RawMessage(body))
+		var obj interface{}
+		err := json.Unmarshal(body, &obj)
+		if err != nil {
+			return err
+		}
+		row.Set("raw_results", obj)
 		err = gp.AddRow(ctx, row)
 		if err != nil {
 			return err
