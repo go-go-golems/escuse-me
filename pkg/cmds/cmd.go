@@ -12,6 +12,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	es_layers "github.com/go-go-golems/escuse-me/pkg/cmds/layers"
+	"github.com/go-go-golems/geppetto/pkg/embeddings"
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds/layout"
@@ -73,7 +74,12 @@ func NewElasticSearchCommand(
 	if err != nil {
 		return nil, err
 	}
-	description.Layers.AppendLayers(glazedParameterLayer, esConnectionLayer, esHelpersLayer)
+	embeddingsLayer, err := embeddings.NewEmbeddingsFlagsLayer()
+	if err != nil {
+		return nil, err
+	}
+
+	description.Layers.AppendLayers(glazedParameterLayer, esConnectionLayer, esHelpersLayer, embeddingsLayer)
 
 	return &ElasticSearchCommand{
 		CommandDescription:  description,
@@ -109,18 +115,30 @@ func (esc *ElasticSearchCommand) RunIntoGlazeProcessor(
 	// TODO(2022-12-21, manuel): Add explain functionality
 	// See: https://github.com/wesen/sqleton/issues/45
 
+	embeddingsSettings := &embeddings.EmbeddingsConfig{}
+	err = parsedLayers.InitializeStruct(embeddings.EmbeddingsSlug, embeddingsSettings)
+	if err != nil {
+		return err
+	}
+
+	embeddingsFactory := embeddings.NewSettingsFactory(embeddingsSettings)
+
+	additionalTags := map[string]emrichen.TagFunc{
+		"!Embeddings": embeddingsFactory.GetEmbeddingTagFunc(),
+	}
+
 	ps_ := parsedLayers.GetDataMap()
 
 	if esHelperSettings.PrintQuery {
 		if output == "json" {
-			query, err := esc.RenderQueryToJSON(ps_)
+			query, err := esc.RenderQueryToJSON(ps_, additionalTags)
 			if err != nil {
 				return errors.Wrapf(err, "Could not generate query")
 			}
 			fmt.Println(query)
 			return &cmds.ExitWithoutGlazeError{}
 		} else {
-			query, err := esc.RenderQueryToYAML(ps_)
+			query, err := esc.RenderQueryToYAML(ps_, additionalTags)
 			if err != nil {
 				return errors.Wrapf(err, "Could not generate query")
 			}
@@ -137,12 +155,15 @@ func (esc *ElasticSearchCommand) RunIntoGlazeProcessor(
 	return err
 }
 
-func (esc *ElasticSearchCommand) renderNodeQuery(parameters map[string]interface{}) (*yaml.Node, error) {
+func (esc *ElasticSearchCommand) renderNodeQuery(parameters map[string]interface{}, additionalTags map[string]emrichen.TagFunc) (*yaml.Node, error) {
 	if esc.QueryNodeTemplate == nil {
 		return nil, errors.New("No query template found")
 	}
 
-	ei, err := emrichen.NewInterpreter(emrichen.WithVars(parameters))
+	ei, err := emrichen.NewInterpreter(
+		emrichen.WithVars(parameters),
+		emrichen.WithAdditionalTags(additionalTags),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +176,7 @@ func (esc *ElasticSearchCommand) renderNodeQuery(parameters map[string]interface
 	return v, nil
 }
 
-func (esc *ElasticSearchCommand) RenderQueryToYAML(parameters map[string]interface{}) (string, error) {
+func (esc *ElasticSearchCommand) RenderQueryToYAML(parameters map[string]interface{}, additionalTags map[string]emrichen.TagFunc) (string, error) {
 	if esc.QueryStringTemplate != "" {
 		tmpl := templating.CreateTemplate("query")
 		tmpl, err := tmpl.Parse(esc.QueryStringTemplate)
@@ -171,7 +192,7 @@ func (esc *ElasticSearchCommand) RenderQueryToYAML(parameters map[string]interfa
 		return s, nil
 	}
 
-	node, err := esc.renderNodeQuery(parameters)
+	node, err := esc.renderNodeQuery(parameters, additionalTags)
 	if err != nil {
 		return "", err
 	}
@@ -190,16 +211,16 @@ func (esc *ElasticSearchCommand) RenderQueryToYAML(parameters map[string]interfa
 	return string(ys), nil
 }
 
-func (esc *ElasticSearchCommand) RenderQueryToJSON(parameters map[string]interface{}) (string, error) {
+func (esc *ElasticSearchCommand) RenderQueryToJSON(parameters map[string]interface{}, additionalTags map[string]emrichen.TagFunc) (string, error) {
 	if esc.QueryStringTemplate != "" {
-		ys, err := esc.RenderQueryToYAML(parameters)
+		ys, err := esc.RenderQueryToYAML(parameters, additionalTags)
 		if err != nil {
 			return "", err
 		}
 		return files.ConvertYAMLMapToJSON(ys)
 	}
 
-	node, err := esc.renderNodeQuery(parameters)
+	node, err := esc.renderNodeQuery(parameters, additionalTags)
 	if err != nil {
 		return "", err
 	}
@@ -277,8 +298,18 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 		return err
 	}
 
+	embeddingsSettings := &embeddings.EmbeddingsConfig{}
+	err = parsedLayers.InitializeStruct(embeddings.EmbeddingsSlug, embeddingsSettings)
+	if err != nil {
+		return err
+	}
+	embeddingsFactory := embeddings.NewSettingsFactory(embeddingsSettings)
+	additionalTags := map[string]emrichen.TagFunc{
+		"!Embeddings": embeddingsFactory.GetEmbeddingTagFunc(),
+	}
+
 	ps_ := parsedLayers.GetDataMap()
-	query, err := esc.RenderQueryToJSON(ps_)
+	query, err := esc.RenderQueryToJSON(ps_, additionalTags)
 	if err != nil {
 		return errors.Wrapf(err, "Could not generate query")
 	}

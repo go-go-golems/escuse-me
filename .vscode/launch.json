@@ -20,6 +20,24 @@
             "program": "${workspaceFolder}/cmd/escuse-me",
             "args": ["mento", "index-stats", "--output", "yaml"],
             "envFile": "${workspaceFolder}/.envrc"
+        },
+        {
+            "name": "Search Summaries Embeddings",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/escuse-me",
+            "args": ["examples", "search-summaries-embeddings", "--query", "test", "--print-query"],
+            "envFile": "${workspaceFolder}/.envrc"
+        },
+        {
+            "name": "Process test-data/concat.yml",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/../go-emrichen/cmd/emrichen",
+            "cwd": "${workspaceFolder}/../go-emrichen",
+            "args": ["process", "test-data/defaults-var-format.yml"]
         }
     ]
 }
