@@ -6,19 +6,25 @@ flags:
   - name: query
     type: string
     help: "Search text to find similar content"
+    required: true
+  - name: k
+    type: int
+    help: "Number of results to return"
+    default: 5
 
 default-index: local-testing-multi-document-summarization
 
 query:
-  embeddings: !Embeddings 
-    query: {{query}}
-  # _source: ["content"]
-  # size: 5
-  # query:
-  #   knn:
-  #     field: content_vector
-  #     query_vector: !Embeddings 
-  #       query: {{query}}
-  #     # query_vector: !Embeddings 
-  #     # - !Var query
-  #     k: 5
+  query:
+    _source: ["content", "title", "url"]
+    size: !Var k
+    knn:
+      field: content_vector
+      query_vector: !Embeddings 
+        text: !Var query
+        config:
+          type: "openai"
+          engine: "text-embedding-3-small"
+          dimensions: 1536
+      k: !Var k
+      num_candidates: 100
