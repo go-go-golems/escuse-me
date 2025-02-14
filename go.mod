@@ -7,9 +7,10 @@ toolchain go1.23.3
 require (
 	github.com/elastic/go-elasticsearch/v8 v8.17.0
 	github.com/go-go-golems/clay v0.1.20
-	github.com/go-go-golems/glazed v0.5.24
-	github.com/go-go-golems/go-emrichen v0.0.3
-	github.com/go-go-golems/parka v0.5.15
+	github.com/go-go-golems/geppetto v0.4.34
+	github.com/go-go-golems/glazed v0.5.26
+	github.com/go-go-golems/go-emrichen v0.0.4
+	github.com/go-go-golems/parka v0.5.17
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.33.0
 	github.com/spf13/cobra v1.8.1
@@ -24,6 +25,7 @@ require (
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
+	github.com/ThreeDotsLabs/watermill v1.3.7 // indirect
 	github.com/adrg/frontmatter v0.2.0 // indirect
 	github.com/alecthomas/chroma/v2 v2.14.0 // indirect
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de // indirect
@@ -47,6 +49,7 @@ require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.6.1 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/charmbracelet/glamour v0.7.0 // indirect
 	github.com/dlclark/regexp2 v1.11.4 // indirect
 	github.com/elastic/elastic-transport-go/v8 v8.6.0 // indirect
@@ -59,9 +62,11 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/huandu/go-clone v1.7.2 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/invopop/jsonschema v0.12.0 // indirect
 	github.com/itchyny/gojq v0.12.12 // indirect
 	github.com/itchyny/timefmt-go v0.1.5 // indirect
 	github.com/jedib0t/go-pretty v4.3.0+incompatible // indirect
@@ -70,6 +75,7 @@ require (
 	github.com/kucherenkovova/safegroup v1.0.2 // indirect
 	github.com/labstack/echo/v4 v4.12.0 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect
+	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
@@ -91,6 +97,7 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
+	github.com/sashabaranov/go-openai v1.36.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.7.0 // indirect

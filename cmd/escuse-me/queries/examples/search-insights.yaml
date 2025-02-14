@@ -1,0 +1,36 @@
+name: "search-insights"
+short: "Search through summaries using embeddings and keywords"
+long: "Search through the summaries using both semantic similarity via embeddings and keyword/fuzzy matching for better results"
+
+flags:
+  - name: query
+    type: string
+    help: "Search text to find similar content"
+    required: true
+  - name: k
+    type: int
+    help: "Number of results to return"
+    default: 5
+
+default-index: local-testing-multi-document-summarization
+
+query:
+  _source: ["content", "title", "url"]
+  query:
+    bool:
+      should:
+        - knn:
+            field: content_vector
+            query_vector: !Embeddings 
+              text: !Var query
+              config:
+                type: "openai"
+                engine: "text-embedding-3-small"
+                dimensions: 1536
+            k: !Var k
+            num_candidates: 100
+        - match:
+            content:
+              query: !Var query
+              boost: 4
+              fuzziness: "AUTO" 

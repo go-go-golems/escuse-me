@@ -187,6 +187,8 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 		repositories_,
 		cli.WithCobraMiddlewaresFunc(es_cmds.GetCobraCommandEscuseMeMiddlewares),
 		cli.WithCobraShortHelpLayers(glazed_layers.DefaultSlug, layers.EsConnectionSlug, layers.ESHelpersSlug),
+		cli.WithProfileSettingsLayer(),
+		cli.WithCreateCommandSettingsLayer(),
 	)
 	if err != nil {
 		return err

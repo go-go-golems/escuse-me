@@ -15,9 +15,8 @@ flags:
 default-index: local-testing-multi-document-summarization
 
 query:
+  _source: ["content", "title", "url"]
   query:
-    _source: ["content", "title", "url"]
-    size: !Var k
     knn:
       field: content_vector
       query_vector: !Embeddings 
