@@ -2,6 +2,10 @@ package cmds
 
 import (
 	"context"
+	"os"
+	"os/signal"
+	"path/filepath"
+
 	es_cmds "github.com/go-go-golems/escuse-me/pkg/cmds"
 	es_layers "github.com/go-go-golems/escuse-me/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds"
@@ -17,9 +21,6 @@ import (
 	"github.com/go-go-golems/parka/pkg/server"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
-	"os"
-	"os/signal"
-	"path/filepath"
 )
 
 type ServeCommand struct {
@@ -147,7 +148,7 @@ func (s *ServeCommand) runWithConfigFile(
 		commandDirHandlerOptions,
 		command_dir.WithGenericCommandHandlerOptions(
 			generic_command.WithParameterFilterOptions(
-				config.WithLayerDefaults(
+				config.WithMergeOverrideLayer(
 					esConnectionLayer.Layer.GetSlug(),
 					esConnectionLayer.Parameters.ToMap(),
 				),
@@ -254,7 +255,7 @@ func (s *ServeCommand) Run(
 		command_dir.WithGenericCommandHandlerOptions(
 			generic_command.WithTemplateLookup(datatables.NewDataTablesLookupTemplate()),
 			generic_command.WithParameterFilterOptions(
-				config.WithLayerDefaults(
+				config.WithMergeOverrideLayer(
 					esClientLayer.Layer.GetSlug(),
 					esClientLayer.Parameters.ToMap(),
 				),

@@ -14,6 +14,7 @@ import (
 	"github.com/go-go-golems/escuse-me/cmd/escuse-me/cmds/indices"
 	es_cmds "github.com/go-go-golems/escuse-me/pkg/cmds"
 	"github.com/go-go-golems/escuse-me/pkg/cmds/layers"
+	"github.com/go-go-golems/escuse-me/pkg/doc"
 	"github.com/go-go-golems/glazed/pkg/cli"
 	glazed_cmds "github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/alias"
@@ -113,15 +114,12 @@ var runCommandCmd = &cobra.Command{
 	},
 }
 
-//go:embed doc/*
-var docFS embed.FS
-
 //go:embed queries/*
 var queriesFS embed.FS
 
 func initRootCmd() (*help.HelpSystem, error) {
 	helpSystem := help.NewHelpSystem()
-	err := helpSystem.LoadSectionsFromFS(docFS, ".")
+	err := doc.AddDocToHelpSystem(helpSystem)
 	cobra.CheckErr(err)
 
 	helpSystem.SetupCobraRootCommand(rootCmd)
@@ -189,6 +187,8 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 		repositories_,
 		cli.WithCobraMiddlewaresFunc(es_cmds.GetCobraCommandEscuseMeMiddlewares),
 		cli.WithCobraShortHelpLayers(glazed_layers.DefaultSlug, layers.EsConnectionSlug, layers.ESHelpersSlug),
+		cli.WithProfileSettingsLayer(),
+		cli.WithCreateCommandSettingsLayer(),
 	)
 	if err != nil {
 		return err
