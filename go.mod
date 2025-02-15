@@ -6,11 +6,11 @@ toolchain go1.23.3
 
 require (
 	github.com/elastic/go-elasticsearch/v8 v8.17.0
-	github.com/go-go-golems/clay v0.1.20
+	github.com/go-go-golems/clay v0.1.27
 	github.com/go-go-golems/geppetto v0.4.34
-	github.com/go-go-golems/glazed v0.5.26
+	github.com/go-go-golems/glazed v0.5.29
 	github.com/go-go-golems/go-emrichen v0.0.4
-	github.com/go-go-golems/parka v0.5.17
+	github.com/go-go-golems/parka v0.5.18
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.33.0
 	github.com/spf13/cobra v1.8.1
