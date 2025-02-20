@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	es_layers "github.com/go-go-golems/escuse-me/pkg/cmds/layers"
 	"github.com/go-go-golems/geppetto/pkg/embeddings"
+	embeddings_config "github.com/go-go-golems/geppetto/pkg/embeddings/config"
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds/layout"
@@ -74,7 +75,7 @@ func NewElasticSearchCommand(
 	if err != nil {
 		return nil, err
 	}
-	embeddingsLayer, err := embeddings.NewEmbeddingsFlagsLayer()
+	embeddingsLayer, err := embeddings_config.NewEmbeddingsParameterLayer()
 	if err != nil {
 		return nil, err
 	}
@@ -115,8 +116,8 @@ func (esc *ElasticSearchCommand) RunIntoGlazeProcessor(
 	// TODO(2022-12-21, manuel): Add explain functionality
 	// See: https://github.com/wesen/sqleton/issues/45
 
-	embeddingsSettings := &embeddings.EmbeddingsConfig{}
-	err = parsedLayers.InitializeStruct(embeddings.EmbeddingsSlug, embeddingsSettings)
+	embeddingsSettings := &embeddings_config.EmbeddingsConfig{}
+	err = parsedLayers.InitializeStruct(embeddings_config.EmbeddingsSlug, embeddingsSettings)
 	if err != nil {
 		return err
 	}
@@ -298,8 +299,8 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 		return err
 	}
 
-	embeddingsSettings := &embeddings.EmbeddingsConfig{}
-	err = parsedLayers.InitializeStruct(embeddings.EmbeddingsSlug, embeddingsSettings)
+	embeddingsSettings := &embeddings_config.EmbeddingsConfig{}
+	err = parsedLayers.InitializeStruct(embeddings_config.EmbeddingsSlug, embeddingsSettings)
 	if err != nil {
 		return err
 	}
