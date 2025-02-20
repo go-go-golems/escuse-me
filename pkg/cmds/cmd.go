@@ -75,7 +75,7 @@ func NewElasticSearchCommand(
 	if err != nil {
 		return nil, err
 	}
-	embeddingsLayer, err := embeddings_config.NewEmbeddingsFlagsLayer()
+	embeddingsLayer, err := embeddings_config.NewEmbeddingsParameterLayer()
 	if err != nil {
 		return nil, err
 	}
