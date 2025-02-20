@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/go-go-golems/escuse-me/pkg/cmds/layers"
-	"github.com/go-go-golems/geppetto/pkg/embeddings"
+	embeddings_config "github.com/go-go-golems/geppetto/pkg/embeddings/config"
 	"github.com/go-go-golems/glazed/pkg/cli"
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	layers2 "github.com/go-go-golems/glazed/pkg/cmds/layers"
@@ -20,7 +20,7 @@ func BuildCobraCommandWithEscuseMeMiddlewares(
 ) (*cobra.Command, error) {
 	options_ := append([]cli.CobraParserOption{
 		cli.WithCobraMiddlewaresFunc(GetCobraCommandEscuseMeMiddlewares),
-		cli.WithCobraShortHelpLayers(layers2.DefaultSlug, layers.EsConnectionSlug, layers.ESHelpersSlug, embeddings.EmbeddingsSlug),
+		cli.WithCobraShortHelpLayers(layers2.DefaultSlug, layers.EsConnectionSlug, layers.ESHelpersSlug, embeddings_config.EmbeddingsSlug),
 	}, options...)
 
 	return cli.BuildCobraCommandFromCommand(cmd, options_...)
@@ -84,7 +84,7 @@ func GetCobraCommandEscuseMeMiddlewares(
 			[]string{
 				layers.EsConnectionSlug,
 				layers.ESHelpersSlug,
-				embeddings.EmbeddingsSlug,
+				embeddings_config.EmbeddingsSlug,
 			},
 			middlewares.GatherFlagsFromViper(parameters.WithParseStepSource("viper")),
 		),

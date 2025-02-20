@@ -3,9 +3,12 @@ package indices
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"strings"
+
 	"github.com/elastic/go-elasticsearch/v8/esapi"
-	"github.com/go-go-golems/escuse-me/cmd/escuse-me/pkg/helpers"
 	es_layers "github.com/go-go-golems/escuse-me/pkg/cmds/layers"
+	"github.com/go-go-golems/escuse-me/pkg/helpers"
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
@@ -13,8 +16,6 @@ import (
 	"github.com/go-go-golems/glazed/pkg/settings"
 	"github.com/go-go-golems/glazed/pkg/types"
 	"github.com/pkg/errors"
-	"io"
-	"strings"
 )
 
 type CloseIndexCommand struct {

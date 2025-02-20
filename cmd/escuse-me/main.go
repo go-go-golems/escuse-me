@@ -258,6 +258,20 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 		ls_commands.WithCommandDescriptionOptions(
 			glazed_cmds.WithShort("Commands related to sqleton queries"),
 		),
+		ls_commands.WithAddCommandToRowFunc(func(
+			command glazed_cmds.Command,
+			row types.Row,
+			parsedLayers *glazed_layers.ParsedLayers,
+		) ([]types.Row, error) {
+			ret := []types.Row{row}
+			switch command.(type) {
+			case *es_cmds.ElasticSearchCommand:
+				row.Set("type", "escuse-me")
+			default:
+			}
+
+			return ret, nil
+		}),
 	)
 
 	if err != nil {

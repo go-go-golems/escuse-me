@@ -1,0 +1,87 @@
+name: "rag-query"
+short: "Execute RAG queries across indexes"
+long: "Execute RAG (Retrieval Augmented Generation) queries across multiple indexes with support for metadata filtering and additional fields"
+
+flags:
+  - name: query_text
+    type: string
+    help: "The main query text to search for"
+    required: true
+  - name: index_names
+    type: stringList
+    help: "Optional list of indexes to query (uses default indexes if not specified)"
+  - name: slack_user_id
+    type: int
+    help: "Optional Slack user ID for filtering"
+  - name: slack_app_installation_id
+    type: int
+    help: "Optional Slack app installation ID for filtering"
+  - name: external_uuid
+    type: string
+    help: "Optional external UUID for tracking"
+  - name: show_vectors
+    type: bool
+    default: false
+    help: "Show vector fields in the output"
+  - name: show_raw_query
+    type: bool
+    default: false
+    help: "Show the raw Elasticsearch query"
+  - name: size
+    type: int
+    default: 10
+    help: "Number of results to return per index"
+  - name: fuzziness
+    type: string
+    default: "AUTO"
+    help: "Fuzziness level for text matching (AUTO, 0, 1, 2)"
+
+query:
+  _source: !Concat
+    - ["id", "content", "metadata", "created_at", "updated_at", "title", "name", "real_name", "subject", "insight_type"]
+    - !If
+        test: !Var show_vectors
+        then: ["content_vector", "metadata_vector"]
+        else: !Void
+  size: !Var size
+  aggs:
+    insight_types:
+      terms:
+        field: "insight_type"
+        size: 20
+  query:
+    bool:
+      must: !Concat
+        - !If
+            test: !Exists query_text
+            then:
+              - multi_match:
+                  query: !Var query_text
+                  fields: [
+                    "title^3",
+                    "name",
+                    "real_name",
+                    "subject",
+                    "content^2",
+                    "metadata.*"
+                  ]
+                  fuzziness: !Var fuzziness
+            else: !Void
+        - !If
+            test: !Exists slack_user_id
+            then:
+              - term:
+                  slack_user_id: !Var slack_user_id
+            else: !Void
+        - !If
+            test: !Exists slack_app_installation_id
+            then:
+              - term:
+                  slack_app_installation_id: !Var slack_app_installation_id
+            else: !Void
+        - !If
+            test: !Exists external_uuid
+            then:
+              - term:
+                  external_uuid: !Var external_uuid
+            else: !Void 
