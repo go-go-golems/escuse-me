@@ -9,7 +9,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	es_layers "github.com/go-go-golems/escuse-me/pkg/cmds/layers"
 	"github.com/go-go-golems/geppetto/pkg/embeddings"
@@ -32,6 +31,7 @@ type EscuseMeCommandDescription struct {
 	Name      string                            `yaml:"name"`
 	Short     string                            `yaml:"short"`
 	Long      string                            `yaml:"long,omitempty"`
+	Type      string                            `yaml:"type,omitempty"`
 	Layout    []*layout.Section                 `yaml:"layout,omitempty"`
 	Flags     []*parameters.ParameterDefinition `yaml:"flags,omitempty"`
 	Arguments []*parameters.ParameterDefinition `yaml:"arguments,omitempty"`
@@ -44,21 +44,21 @@ type EscuseMeCommandDescription struct {
 	Query *RawNode `yaml:"query,omitempty"`
 }
 
-type ESClientFactory func(*layers.ParsedLayers) (*elasticsearch.Client, error)
+type SearchClientFactory func(*layers.ParsedLayers) (es_layers.SearchClient, error)
 
 type ElasticSearchCommand struct {
 	*cmds.CommandDescription `yaml:",inline"`
 	QueryStringTemplate      string `yaml:"query"`
 	QueryNodeTemplate        *RawNode
 	DefaultIndex             string `yaml:"default-index,omitempty"`
-	clientFactory            ESClientFactory
+	clientFactory            SearchClientFactory
 }
 
 var _ cmds.GlazeCommand = &ElasticSearchCommand{}
 
 func NewElasticSearchCommand(
 	description *cmds.CommandDescription,
-	clientFactory ESClientFactory,
+	clientFactory SearchClientFactory,
 	queryStringTemplate string,
 	queryNodeTemplate *RawNode,
 	defaultIndex string,
@@ -79,8 +79,11 @@ func NewElasticSearchCommand(
 	if err != nil {
 		return nil, err
 	}
-
-	description.Layers.AppendLayers(glazedParameterLayer, esConnectionLayer, esHelpersLayer, embeddingsLayer)
+	embeddingsApiKeyLayer, err := embeddings_config.NewEmbeddingsApiKeyParameter()
+	if err != nil {
+		return nil, err
+	}
+	description.Layers.AppendLayers(glazedParameterLayer, esConnectionLayer, esHelpersLayer, embeddingsLayer, embeddingsApiKeyLayer)
 
 	return &ElasticSearchCommand{
 		CommandDescription:  description,
@@ -118,6 +121,10 @@ func (esc *ElasticSearchCommand) RunIntoGlazeProcessor(
 
 	embeddingsSettings := &embeddings_config.EmbeddingsConfig{}
 	err = parsedLayers.InitializeStruct(embeddings_config.EmbeddingsSlug, embeddingsSettings)
+	if err != nil {
+		return err
+	}
+	err = parsedLayers.InitializeStruct(embeddings_config.EmbeddingsApiKeySlug, embeddingsSettings)
 	if err != nil {
 		return err
 	}
@@ -289,7 +296,7 @@ func (esc *ElasticSearchCommand) processAggregations(
 
 func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 	ctx context.Context,
-	es *elasticsearch.Client,
+	es es_layers.SearchClient,
 	parsedLayers *layers.ParsedLayers,
 	gp middlewares.Processor,
 ) error {
@@ -301,6 +308,10 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 
 	embeddingsSettings := &embeddings_config.EmbeddingsConfig{}
 	err = parsedLayers.InitializeStruct(embeddings_config.EmbeddingsSlug, embeddingsSettings)
+	if err != nil {
+		return err
+	}
+	err = parsedLayers.InitializeStruct(embeddings_config.EmbeddingsApiKeySlug, embeddingsSettings)
 	if err != nil {
 		return err
 	}
@@ -321,22 +332,23 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 
 	queryReader := strings.NewReader(query)
 
+	es_ := es.(*es_layers.ElasticsearchClient)
 	os_ := []func(*esapi.SearchRequest){
-		es.Search.WithContext(ctx),
-		es.Search.WithBody(queryReader),
-		es.Search.WithTrackTotalHits(true),
+		es_.Search.WithContext(ctx),
+		es_.Search.WithBody(queryReader),
+		es_.Search.WithTrackTotalHits(true),
 	}
 
-	os_ = append(os_, es.Search.WithExplain(esHelperSettings.Explain))
+	os_ = append(os_, es_.Search.WithExplain(esHelperSettings.Explain))
 	if esHelperSettings.Index != "" {
-		os_ = append(os_, es.Search.WithIndex(esHelperSettings.Index))
+		os_ = append(os_, es_.Search.WithIndex(esHelperSettings.Index))
 	} else if esc.DefaultIndex != "" {
-		os_ = append(os_, es.Search.WithIndex(esc.DefaultIndex))
+		os_ = append(os_, es_.Search.WithIndex(esc.DefaultIndex))
 	} else {
 		return errors.New("No index specified")
 	}
 
-	res, err := es.Search(os_...)
+	res, err := es_.Search(os_...)
 	if err != nil {
 		return errors.Wrapf(err, "Could not run query")
 	}

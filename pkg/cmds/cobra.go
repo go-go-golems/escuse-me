@@ -20,7 +20,7 @@ func BuildCobraCommandWithEscuseMeMiddlewares(
 ) (*cobra.Command, error) {
 	options_ := append([]cli.CobraParserOption{
 		cli.WithCobraMiddlewaresFunc(GetCobraCommandEscuseMeMiddlewares),
-		cli.WithCobraShortHelpLayers(layers2.DefaultSlug, layers.EsConnectionSlug, layers.ESHelpersSlug, embeddings_config.EmbeddingsSlug),
+		cli.WithCobraShortHelpLayers(layers2.DefaultSlug, layers.EsConnectionSlug, layers.ESHelpersSlug, embeddings_config.EmbeddingsSlug, embeddings_config.EmbeddingsApiKeySlug),
 	}, options...)
 
 	return cli.BuildCobraCommandFromCommand(cmd, options_...)
@@ -85,6 +85,7 @@ func GetCobraCommandEscuseMeMiddlewares(
 				layers.EsConnectionSlug,
 				layers.ESHelpersSlug,
 				embeddings_config.EmbeddingsSlug,
+				embeddings_config.EmbeddingsApiKeySlug,
 			},
 			middlewares.GatherFlagsFromViper(parameters.WithParseStepSource("viper")),
 		),

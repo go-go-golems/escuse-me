@@ -68,6 +68,21 @@
             ]
         },
         {
+            "name": "Run Command",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/escuse-me",
+            "args": [
+                "run-command",
+                "./cmd/escuse-me/queries/examples/search-summaries-embeddings.yaml",
+                "--query",
+                "test"
+            ],
+            "envFile": "${workspaceFolder}/.envrc",
+            "cwd": "${workspaceFolder}"
+        }
+        {
             "name": "Search Summaries Embeddings (Alt)",
             "type": "go",
             "request": "launch",

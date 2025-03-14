@@ -42,21 +42,13 @@ var rootCmd = &cobra.Command{
 func main() {
 	if len(os.Args) >= 3 && os.Args[1] == "run-command" && os.Args[2] != "--help" {
 		// load the command
-		clientFactory := layers.NewESClientFromParsedLayers
+		clientFactory := layers.NewSearchClientFromParsedLayers
 		loader := es_cmds.NewElasticSearchCommandLoader(clientFactory)
-		fi, err := os.Stat(os.Args[2])
-		cobra.CheckErr(err)
-		if !fi.IsDir() {
-			fmt.Printf("Expected directory, got file")
-			os.Exit(1)
-		}
 
-		path := os.Args[2]
-		if path[0] != '/' {
-			// resolve absolute path from .
-			wd, err := os.Getwd()
-			cobra.CheckErr(err)
-			path = wd + "/" + path
+		fs_, filePath, err := loaders.FileNameToFsFilePath(os.Args[2])
+		if err != nil {
+			fmt.Printf("Could not get fs and filePath: %v\n", err)
+			os.Exit(1)
 		}
 
 		esParameterLayer, err := layers.NewESParameterLayer()
@@ -66,12 +58,11 @@ func main() {
 			glazed_cmds.WithLayersList(esParameterLayer),
 		}
 		aliasOptions := []alias.Option{}
-		fs := os.DirFS(path)
-		cmds, err := loaders.LoadCommandsFromFS(
-			fs, ".", os.Args[2],
-			loader,
-			options, aliasOptions,
-		)
+		cmds, err := loader.LoadCommands(fs_, filePath, options, aliasOptions)
+		if err != nil {
+			fmt.Printf("Could not load command: %v\n", err)
+			os.Exit(1)
+		}
 		if err != nil {
 			fmt.Printf("Could not load command: %v\n", err)
 			os.Exit(1)
@@ -146,7 +137,7 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	defaultDirectory := "$HOME/.escuse-me/queries"
 	repositoryPaths = append(repositoryPaths, defaultDirectory)
 
-	clientFactory := layers.NewESClientFromParsedLayers
+	clientFactory := layers.NewSearchClientFromParsedLayers
 	loader := es_cmds.NewElasticSearchCommandLoader(clientFactory)
 
 	directories := []repositories.Directory{

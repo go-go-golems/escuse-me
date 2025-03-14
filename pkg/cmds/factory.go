@@ -6,7 +6,7 @@ import (
 )
 
 func NewRepositoryFactory() handlers.RepositoryFactory {
-	loader := NewElasticSearchCommandLoader(layers.NewESClientFromParsedLayers)
+	loader := NewElasticSearchCommandLoader(layers.NewSearchClientFromParsedLayers)
 
 	return handlers.NewRepositoryFactoryFromReaderLoaders(loader)
 }
