@@ -1,6 +1,11 @@
 package cmds
 
 import (
+	"io/fs"
+	"path"
+	"path/filepath"
+	"strings"
+
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/alias"
 	"github.com/go-go-golems/glazed/pkg/cmds/layout"
@@ -9,10 +14,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
-	"io/fs"
-	"path"
-	"path/filepath"
-	"strings"
 )
 
 // ElasticSearchCommandLoader walks through a directory and finds all directories that end with
@@ -27,7 +28,7 @@ import (
 //   - this data is passed to the template at evaluation file,
 //     and can be used to store things like tags and constant strings, boost values and the like
 type ElasticSearchCommandLoader struct {
-	clientFactory ESClientFactory
+	clientFactory SearchClientFactory
 }
 
 type RawNode struct {
@@ -42,7 +43,7 @@ func (n *RawNode) UnmarshalYAML(value *yaml.Node) error {
 var _ loaders.CommandLoader = (*ElasticSearchCommandLoader)(nil)
 
 func NewElasticSearchCommandLoader(
-	clientFactory ESClientFactory,
+	clientFactory SearchClientFactory,
 ) *ElasticSearchCommandLoader {
 	return &ElasticSearchCommandLoader{
 		clientFactory: clientFactory,
@@ -50,20 +51,25 @@ func NewElasticSearchCommandLoader(
 }
 
 func (escl *ElasticSearchCommandLoader) IsFileSupported(f fs.FS, fileName string) bool {
-	f_, err := f.Open(fileName)
+	if strings.HasSuffix(fileName, ".yaml") || strings.HasSuffix(fileName, ".yml") {
+		return loaders.CheckYamlFileType(f, fileName, "escuse-me")
+	}
+
+	// Check if it's an escuse-me directory
+	fi, err := f.Open(fileName)
 	if err != nil {
 		return false
 	}
-	fi, err := f_.Stat()
+	defer func(fi fs.File) {
+		_ = fi.Close()
+	}(fi)
+
+	stat, err := fi.Stat()
 	if err != nil {
 		return false
 	}
 
-	if strings.HasSuffix(fileName, ".yaml") {
-		return true
-	}
-
-	return strings.HasSuffix(fileName, ".escuse-me") && fi.IsDir()
+	return strings.HasSuffix(fileName, ".escuse-me") && stat.IsDir()
 }
 
 func (escl *ElasticSearchCommandLoader) LoadCommands(

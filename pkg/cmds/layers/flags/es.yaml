@@ -1,6 +1,11 @@
 slug: es-connection
 name: ElasticSearch connection flags
 flags:
+  - name: client-type
+    type: string
+    help: Client type to use (elasticsearch or opensearch)
+    default: "elasticsearch"
+    enum: ["elasticsearch", "opensearch"]
   - name: addresses
     type: stringList
     help: Addresses of the ElasticSearch nodes

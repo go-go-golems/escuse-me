@@ -3,7 +3,7 @@ package indices
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+
 	"github.com/go-go-golems/escuse-me/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds"
 	layers2 "github.com/go-go-golems/glazed/pkg/cmds/layers"
@@ -13,7 +13,6 @@ import (
 	"github.com/go-go-golems/glazed/pkg/settings"
 	"github.com/go-go-golems/glazed/pkg/types"
 	"github.com/pkg/errors"
-	"io"
 )
 
 type IndicesListCommand struct {
@@ -36,7 +35,7 @@ func NewIndicesListCommand() (*IndicesListCommand, error) {
 	return &IndicesListCommand{
 		CommandDescription: cmds.NewCommandDescription(
 			"ls",
-			cmds.WithShort("Prints the list of available ES indices"),
+			cmds.WithShort("Prints the list of available indices"),
 			cmds.WithFlags(
 				parameters.NewParameterDefinition(
 					"full",
@@ -67,7 +66,8 @@ func (i *IndicesListCommand) RunIntoGlazeProcessor(
 	if err != nil {
 		return err
 	}
-	es, err := layers.NewESClientFromParsedLayers(parsedLayers)
+
+	client, err := layers.NewSearchClientFromParsedLayers(parsedLayers)
 	if err != nil {
 		return err
 	}
@@ -78,20 +78,7 @@ func (i *IndicesListCommand) RunIntoGlazeProcessor(
 		),
 	)
 
-	res, err := es.Cat.Indices(es.Cat.Indices.WithFormat("json"))
-	if err != nil {
-		return err
-	}
-
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			fmt.Println(err)
-		}
-	}(res.Body)
-
-	// read all body
-	body, err := io.ReadAll(res.Body)
+	body, err := client.ListIndices(ctx)
 	if err != nil {
 		return err
 	}
@@ -101,6 +88,7 @@ func (i *IndicesListCommand) RunIntoGlazeProcessor(
 	if err != nil {
 		return err
 	}
+
 	for _, index := range body_ {
 		if !s.Full {
 			health_, _ := index.Get("health")

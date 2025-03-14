@@ -1,9 +1,11 @@
 package layers
 
 import (
+	"context"
 	"crypto/tls"
 	_ "embed"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -11,6 +13,8 @@ import (
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/go-go-golems/glazed/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
+	opensearch "github.com/opensearch-project/opensearch-go/v4"
+	"github.com/opensearch-project/opensearch-go/v4/opensearchapi"
 )
 
 //go:embed "flags/es.yaml"
@@ -22,7 +26,23 @@ type EsParameterLayer struct {
 	*layers.ParameterLayerImpl `yaml:",inline"`
 }
 
+// SearchClient is a common interface for both Elasticsearch and OpenSearch clients
+type SearchClient interface {
+	ListIndices(ctx context.Context) ([]byte, error)
+}
+
+// ElasticsearchClient wraps the Elasticsearch client
+type ElasticsearchClient struct {
+	*elasticsearch.Client
+}
+
+// OpenSearchClient wraps the OpenSearch client
+type OpenSearchClient struct {
+	*opensearchapi.Client
+}
+
 type EsClientSettings struct {
+	ClientType              string               `glazed.parameter:"client-type"`
 	Addresses               []string             `glazed.parameter:"addresses"`
 	Username                string               `glazed.parameter:"username"`
 	Password                string               `glazed.parameter:"password"`
@@ -45,6 +65,33 @@ type EsClientSettings struct {
 	DisableMetaHeader       bool                 `glazed.parameter:"disable-meta-header"`
 }
 
+// ListIndices implements the SearchClient interface for ElasticsearchClient
+func (c *ElasticsearchClient) ListIndices(ctx context.Context) ([]byte, error) {
+	res, err := c.Cat.Indices(c.Cat.Indices.WithFormat("json"))
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	return io.ReadAll(res.Body)
+}
+
+// ListIndices implements the SearchClient interface for OpenSearchClient
+func (c *OpenSearchClient) ListIndices(ctx context.Context) ([]byte, error) {
+	// Use the OpenSearch API client to get indices
+	req_ := opensearchapi.CatIndicesReq{
+		Params: opensearchapi.CatIndicesParams{
+			H: []string{"health", "status", "index", "uuid", "pri", "rep", "docs.count", "docs.deleted", "store.size", "pri.store.size"},
+		},
+	}
+
+	resp, err := c.Cat.Indices(ctx, &req_)
+	if err != nil {
+		return nil, err
+	}
+
+	return []byte(resp.Inspect().Response.String()), nil
+}
+
 func NewESParameterLayer(options ...layers.ParameterLayerOptions) (*EsParameterLayer, error) {
 	ret, err := layers.NewParameterLayerFromYAML(esFlagsYaml, options...)
 	if err != nil {
@@ -62,9 +109,9 @@ func NewESClientSettingsFromParsedLayers(parsedLayers *layers.ParsedLayers) (*Es
 	return ret, nil
 }
 
-func NewESClientFromParsedLayers(
+func NewSearchClientFromParsedLayers(
 	parsedLayers *layers.ParsedLayers,
-) (*elasticsearch.Client, error) {
+) (SearchClient, error) {
 	settings, err := NewESClientSettingsFromParsedLayers(parsedLayers)
 	if err != nil {
 		return nil, err
@@ -73,6 +120,26 @@ func NewESClientFromParsedLayers(
 		return nil, nil
 	}
 
+	switch settings.ClientType {
+	case "opensearch":
+		return newOpenSearchClient(settings)
+	default: // "elasticsearch" or empty string
+		return newElasticsearchClient(settings)
+	}
+}
+
+func NewESClientFromParsedLayers(
+	parsedLayers *layers.ParsedLayers,
+) (*ElasticsearchClient, error) {
+	settings, err := NewESClientSettingsFromParsedLayers(parsedLayers)
+	if err != nil {
+		return nil, err
+	}
+
+	return newElasticsearchClient(settings)
+}
+
+func newElasticsearchClient(settings *EsClientSettings) (*ElasticsearchClient, error) {
 	cfg := elasticsearch.Config{
 		Addresses:               settings.Addresses,
 		Username:                settings.Username,
@@ -113,7 +180,59 @@ func NewESClientFromParsedLayers(
 	}
 
 	es, err := elasticsearch.NewClient(cfg)
-	return es, err
+	if err != nil {
+		return nil, err
+	}
+	return &ElasticsearchClient{Client: es}, nil
+}
+
+func newOpenSearchClient(settings *EsClientSettings) (*OpenSearchClient, error) {
+	cfg := opensearch.Config{
+		Addresses:         settings.Addresses,
+		Username:          settings.Username,
+		Password:          settings.Password,
+		RetryOnStatus:     settings.RetryOnStatus,
+		DisableRetry:      settings.DisableRetry,
+		MaxRetries:        settings.MaxRetries,
+		EnableMetrics:     settings.EnableMetrics,
+		EnableDebugLogger: settings.EnableDebugLogger,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: settings.InsecureSkipVerify,
+			},
+		},
+		CompressRequestBody:  settings.CompressRequestBody,
+		DiscoverNodesOnStart: settings.DiscoverNodesOnStart,
+	}
+
+	if settings.CACert != nil {
+		cfg.CACert = settings.CACert.RawContent
+	}
+
+	if settings.RetryBackoff != nil {
+		backoff := *settings.RetryBackoff
+		cfg.RetryBackoff = func(attempt int) time.Duration {
+			return time.Duration(backoff) * time.Second
+		}
+	}
+
+	if settings.DiscoverNodesInterval != nil {
+		cfg.DiscoverNodesInterval = time.Duration(*settings.DiscoverNodesInterval) * time.Second
+	}
+
+	os, err := opensearchapi.NewClient(opensearchapi.Config{
+		Client: opensearch.Config{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: settings.InsecureSkipVerify,
+				},
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &OpenSearchClient{Client: os}, nil
 }
 
 func (s *EsClientSettings) GetSummary(verbose bool) string {
