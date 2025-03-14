@@ -488,11 +488,10 @@ type ElasticSearchResult struct {
 func (esc *ElasticSearchCommand) RunRawQuery(
 	ctx context.Context,
 	es es_layers.SearchClient,
+	embeddingsFactory *embeddings.SettingsFactory,
 	parameters map[string]interface{},
 ) (map[string]interface{}, error) {
 	// Create embeddings settings and additional tags
-	embeddingsSettings := &embeddings_config.EmbeddingsConfig{}
-	embeddingsFactory := embeddings.NewSettingsFactory(embeddingsSettings)
 	additionalTags := map[string]emrichen.TagFunc{
 		"!Embeddings": embeddingsFactory.GetEmbeddingTagFunc(),
 	}
