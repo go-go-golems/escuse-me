@@ -7,8 +7,8 @@ toolchain go1.23.3
 require (
 	github.com/elastic/go-elasticsearch/v8 v8.17.0
 	github.com/go-go-golems/clay v0.1.32
-	github.com/go-go-golems/geppetto v0.4.39
-	github.com/go-go-golems/glazed v0.5.35
+	github.com/go-go-golems/geppetto v0.4.40
+	github.com/go-go-golems/glazed v0.5.36
 	github.com/go-go-golems/go-emrichen v0.0.4
 	github.com/go-go-golems/parka v0.5.20
 	github.com/opensearch-project/opensearch-go/v4 v4.4.0

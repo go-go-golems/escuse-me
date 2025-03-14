@@ -68,6 +68,20 @@
             ]
         },
         {
+            "name": "Escuse-me Serve",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/escuse-me",
+            "args": [
+                "serve",
+                "--log-level",
+                "debug"
+            ],
+            "envFile": "${workspaceFolder}/.envrc",
+            "cwd": "${workspaceFolder}"
+        },
+        {
             "name": "Run Command",
             "type": "go",
             "request": "launch",
@@ -81,7 +95,7 @@
             ],
             "envFile": "${workspaceFolder}/.envrc",
             "cwd": "${workspaceFolder}"
-        }
+        },
         {
             "name": "Search Summaries Embeddings (Alt)",
             "type": "go",

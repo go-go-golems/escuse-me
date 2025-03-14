@@ -259,6 +259,7 @@ func (s *ServeCommand) Run(
 					esClientLayer.Layer.GetSlug(),
 					esClientLayer.Parameters.ToMap(),
 				),
+				config.WithWhitelistLayers(layers.DefaultSlug),
 			),
 			generic_command.WithDefaultTemplateName("data-tables.tmpl.html"),
 			generic_command.WithDefaultIndexTemplateName(""),
