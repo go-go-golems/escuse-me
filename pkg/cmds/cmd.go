@@ -294,6 +294,70 @@ func (esc *ElasticSearchCommand) processAggregations(
 	return gp.AddRow(ctx, row)
 }
 
+// executeQuery executes an Elasticsearch query and returns the raw response
+func (esc *ElasticSearchCommand) executeQuery(
+	ctx context.Context,
+	es es_layers.SearchClient,
+	parameters map[string]interface{},
+	additionalTags map[string]emrichen.TagFunc,
+	options ...func(*esapi.SearchRequest),
+) ([]byte, error) {
+	// Render the query to JSON
+	query, err := esc.RenderQueryToJSON(parameters, additionalTags)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Could not generate query")
+	}
+
+	if es == nil {
+		return nil, errors.New("ES client is nil")
+	}
+
+	queryReader := strings.NewReader(query)
+
+	es_ := es.(*es_layers.ElasticsearchClient)
+	os_ := []func(*esapi.SearchRequest){
+		es_.Search.WithContext(ctx),
+		es_.Search.WithBody(queryReader),
+		es_.Search.WithTrackTotalHits(true),
+	}
+
+	// Add any additional options
+	os_ = append(os_, options...)
+
+	// Execute the search
+	res, err := es_.Search(os_...)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Could not run query")
+	}
+
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(res.Body)
+
+	// Read the response body
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error reading response body")
+	}
+
+	// Handle errors
+	if res.IsError() {
+		var e map[string]interface{}
+		if err := json.Unmarshal(body, &e); err != nil {
+			return nil, errors.New("Error parsing the response body")
+		}
+
+		// Return the error message
+		errMessage := fmt.Sprintf("[%s] %s: %s", res.Status(), e["error"].(map[string]interface{})["type"], e["error"].(map[string]interface{})["reason"])
+		return body, errors.New(errMessage)
+	}
+
+	return body, nil
+}
+
 func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 	ctx context.Context,
 	es es_layers.SearchClient,
@@ -321,57 +385,24 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 	}
 
 	ps_ := parsedLayers.GetDataMap()
-	query, err := esc.RenderQueryToJSON(ps_, additionalTags)
-	if err != nil {
-		return errors.Wrapf(err, "Could not generate query")
-	}
 
-	if es == nil {
-		return errors.New("ES client is nil")
-	}
+	// Prepare search options
+	options := []func(*esapi.SearchRequest){}
 
-	queryReader := strings.NewReader(query)
-
-	es_ := es.(*es_layers.ElasticsearchClient)
-	os_ := []func(*esapi.SearchRequest){
-		es_.Search.WithContext(ctx),
-		es_.Search.WithBody(queryReader),
-		es_.Search.WithTrackTotalHits(true),
-	}
-
-	os_ = append(os_, es_.Search.WithExplain(esHelperSettings.Explain))
+	options = append(options, es.(*es_layers.ElasticsearchClient).Search.WithExplain(esHelperSettings.Explain))
 	if esHelperSettings.Index != "" {
-		os_ = append(os_, es_.Search.WithIndex(esHelperSettings.Index))
+		options = append(options, es.(*es_layers.ElasticsearchClient).Search.WithIndex(esHelperSettings.Index))
 	} else if esc.DefaultIndex != "" {
-		os_ = append(os_, es_.Search.WithIndex(esc.DefaultIndex))
+		options = append(options, es.(*es_layers.ElasticsearchClient).Search.WithIndex(esc.DefaultIndex))
 	} else {
 		return errors.New("No index specified")
 	}
 
-	res, err := es_.Search(os_...)
+	// Execute the query
+	body, err := esc.executeQuery(ctx, es, ps_, additionalTags, options...)
 	if err != nil {
-		return errors.Wrapf(err, "Could not run query")
-	}
-
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			fmt.Println(err)
-		}
-	}(res.Body)
-
-	if res.IsError() {
-		var e map[string]interface{}
-		body, err := io.ReadAll(res.Body)
-		if err != nil {
-			return errors.Wrap(err, "Error reading response body")
-		}
-
-		if err := json.Unmarshal(body, &e); err != nil {
-			return errors.New("Error parsing the response body")
-		}
-
-		if esHelperSettings.RawResults {
+		// Handle error display based on settings
+		if strings.Contains(err.Error(), "[") && esHelperSettings.RawResults {
 			// Parse and pretty print JSON error response to stderr
 			var prettyJSON bytes.Buffer
 			if err := json.Indent(&prettyJSON, body, "", "  "); err != nil {
@@ -379,29 +410,24 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 			} else {
 				fmt.Fprintf(os.Stderr, "%s\n", prettyJSON.String())
 			}
-		} else {
+		} else if strings.Contains(err.Error(), "[") {
 			// Extract and print just the error reason and root cause
-			if errorObj, ok := e["error"].(map[string]interface{}); ok {
-				if reason, ok := errorObj["reason"].(string); ok {
-					fmt.Fprintf(os.Stderr, "Error reason: %s\n", reason)
-				}
-				if rootCauses, ok := errorObj["root_cause"].([]interface{}); ok && len(rootCauses) > 0 {
-					if rootCause, ok := rootCauses[0].(map[string]interface{}); ok {
-						rootType, _ := rootCause["type"].(string)
-						rootReason, _ := rootCause["reason"].(string)
-						fmt.Fprintf(os.Stderr, "Root cause: [%s] %s\n", rootType, rootReason)
+			var e map[string]interface{}
+			if err := json.Unmarshal(body, &e); err == nil {
+				if errorObj, ok := e["error"].(map[string]interface{}); ok {
+					if reason, ok := errorObj["reason"].(string); ok {
+						fmt.Fprintf(os.Stderr, "Error reason: %s\n", reason)
+					}
+					if rootCauses, ok := errorObj["root_cause"].([]interface{}); ok && len(rootCauses) > 0 {
+						if rootCause, ok := rootCauses[0].(map[string]interface{}); ok {
+							rootType, _ := rootCause["type"].(string)
+							rootReason, _ := rootCause["reason"].(string)
+							fmt.Fprintf(os.Stderr, "Root cause: [%s] %s\n", rootType, rootReason)
+						}
 					}
 				}
 			}
 		}
-
-		// Print the response status and error information.
-		errMessage := fmt.Sprintf("[%s] %s: %s", res.Status(), e["error"].(map[string]interface{})["type"], e["error"].(map[string]interface{})["reason"])
-		return errors.New(errMessage)
-	}
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
 		return err
 	}
 
@@ -456,4 +482,44 @@ type ElasticSearchResult struct {
 		} `json:"hits,omitempty"`
 	} `json:"hits"`
 	Aggregations map[string]json.RawMessage `json:"aggregations,omitempty"`
+}
+
+// RunRawQuery executes an Elasticsearch query and returns raw results without Glaze processing
+func (esc *ElasticSearchCommand) RunRawQuery(
+	ctx context.Context,
+	es es_layers.SearchClient,
+	parameters map[string]interface{},
+) (map[string]interface{}, error) {
+	// Create embeddings settings and additional tags
+	embeddingsSettings := &embeddings_config.EmbeddingsConfig{}
+	embeddingsFactory := embeddings.NewSettingsFactory(embeddingsSettings)
+	additionalTags := map[string]emrichen.TagFunc{
+		"!Embeddings": embeddingsFactory.GetEmbeddingTagFunc(),
+	}
+
+	// Prepare search options
+	options := []func(*esapi.SearchRequest){}
+
+	// Add index if specified
+	if index, ok := parameters["index"].(string); ok && index != "" {
+		options = append(options, es.(*es_layers.ElasticsearchClient).Search.WithIndex(index))
+	} else if esc.DefaultIndex != "" {
+		options = append(options, es.(*es_layers.ElasticsearchClient).Search.WithIndex(esc.DefaultIndex))
+	} else {
+		return nil, errors.New("No index specified")
+	}
+
+	// Execute the query
+	body, err := esc.executeQuery(ctx, es, parameters, additionalTags, options...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse the JSON response
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, errors.New("Error parsing the response body")
+	}
+
+	return result, nil
 }
