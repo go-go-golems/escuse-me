@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	elasticsearch "github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	es_layers "github.com/go-go-golems/escuse-me/pkg/cmds/layers"
 	"github.com/go-go-golems/geppetto/pkg/embeddings"
@@ -23,6 +24,7 @@ import (
 	"github.com/go-go-golems/glazed/pkg/settings"
 	"github.com/go-go-golems/go-emrichen/pkg/emrichen"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	orderedmap "github.com/wk8/go-ordered-map/v2"
 	"gopkg.in/yaml.v3"
 )
@@ -46,12 +48,15 @@ type EscuseMeCommandDescription struct {
 
 type SearchClientFactory func(*layers.ParsedLayers) (es_layers.SearchClient, error)
 
+type EmbeddingsFactory func(*layers.ParsedLayers) (embeddings.ProviderFactory, error)
+
 type ElasticSearchCommand struct {
 	*cmds.CommandDescription `yaml:",inline"`
 	QueryStringTemplate      string `yaml:"query"`
 	QueryNodeTemplate        *RawNode
 	DefaultIndex             string `yaml:"default-index,omitempty"`
 	clientFactory            SearchClientFactory
+	embeddingsFactory        EmbeddingsFactory
 }
 
 var _ cmds.GlazeCommand = &ElasticSearchCommand{}
@@ -59,10 +64,17 @@ var _ cmds.GlazeCommand = &ElasticSearchCommand{}
 func NewElasticSearchCommand(
 	description *cmds.CommandDescription,
 	clientFactory SearchClientFactory,
+	embeddingsFactory EmbeddingsFactory,
 	queryStringTemplate string,
 	queryNodeTemplate *RawNode,
 	defaultIndex string,
 ) (*ElasticSearchCommand, error) {
+	if clientFactory == nil {
+		return nil, errors.New("clientFactory is nil")
+	}
+	if embeddingsFactory == nil {
+		log.Warn().Msg("embeddingsFactory is nil, embeddings will not be available")
+	}
 	glazedParameterLayer, err := settings.NewGlazedParameterLayers()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create Glazed parameter layer")
@@ -88,6 +100,7 @@ func NewElasticSearchCommand(
 	return &ElasticSearchCommand{
 		CommandDescription:  description,
 		clientFactory:       clientFactory,
+		embeddingsFactory:   embeddingsFactory,
 		QueryStringTemplate: queryStringTemplate,
 		QueryNodeTemplate:   queryNodeTemplate,
 		DefaultIndex:        defaultIndex,
@@ -99,6 +112,10 @@ func (esc *ElasticSearchCommand) RunIntoGlazeProcessor(
 	parsedLayers *layers.ParsedLayers,
 	gp middlewares.Processor,
 ) error {
+	if esc.clientFactory == nil {
+		return errors.New("clientFactory is nil")
+	}
+
 	es, err := esc.clientFactory(parsedLayers)
 	if err != nil {
 		return errors.Wrapf(err, "Could not create ES client")
@@ -129,10 +146,15 @@ func (esc *ElasticSearchCommand) RunIntoGlazeProcessor(
 		return err
 	}
 
-	embeddingsFactory := embeddings.NewSettingsFactory(embeddingsSettings)
-
-	additionalTags := map[string]emrichen.TagFunc{
-		"!Embeddings": embeddingsFactory.GetEmbeddingTagFunc(),
+	additionalTags := map[string]emrichen.TagFunc{}
+	var embeddingsProviderFactory embeddings.ProviderFactory
+	if esc.embeddingsFactory != nil {
+		embeddingsFactory, err := esc.embeddingsFactory(parsedLayers)
+		if err != nil {
+			return errors.Wrapf(err, "Could not create embeddings factory")
+		}
+		embeddingsProviderFactory = embeddingsFactory
+		additionalTags["!Embeddings"] = embeddingsFactory.GetEmbeddingTagFunc()
 	}
 
 	ps_ := parsedLayers.GetDataMap()
@@ -159,7 +181,11 @@ func (esc *ElasticSearchCommand) RunIntoGlazeProcessor(
 		return errors.New("ES client is nil")
 	}
 
-	err = esc.RunQueryIntoGlaze(ctx, es, parsedLayers, gp)
+	esClient, ok := es.(*es_layers.ElasticsearchClient)
+	if !ok {
+		return errors.New("ES client is not an ElasticsearchClient")
+	}
+	err = esc.RunQueryIntoGlaze(ctx, esClient.Client, embeddingsProviderFactory, parsedLayers, gp)
 	return err
 }
 
@@ -297,7 +323,7 @@ func (esc *ElasticSearchCommand) processAggregations(
 // executeQuery executes an Elasticsearch query and returns the raw response
 func (esc *ElasticSearchCommand) executeQuery(
 	ctx context.Context,
-	es es_layers.SearchClient,
+	es *elasticsearch.Client,
 	parameters map[string]interface{},
 	additionalTags map[string]emrichen.TagFunc,
 	options ...func(*esapi.SearchRequest),
@@ -314,18 +340,17 @@ func (esc *ElasticSearchCommand) executeQuery(
 
 	queryReader := strings.NewReader(query)
 
-	es_ := es.(*es_layers.ElasticsearchClient)
 	os_ := []func(*esapi.SearchRequest){
-		es_.Search.WithContext(ctx),
-		es_.Search.WithBody(queryReader),
-		es_.Search.WithTrackTotalHits(true),
+		es.Search.WithContext(ctx),
+		es.Search.WithBody(queryReader),
+		es.Search.WithTrackTotalHits(true),
 	}
 
 	// Add any additional options
 	os_ = append(os_, options...)
 
 	// Execute the search
-	res, err := es_.Search(os_...)
+	res, err := es.Search(os_...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Could not run query")
 	}
@@ -360,7 +385,8 @@ func (esc *ElasticSearchCommand) executeQuery(
 
 func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 	ctx context.Context,
-	es es_layers.SearchClient,
+	es *elasticsearch.Client,
+	embeddingsProviderFactory embeddings.ProviderFactory,
 	parsedLayers *layers.ParsedLayers,
 	gp middlewares.Processor,
 ) error {
@@ -379,9 +405,9 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 	if err != nil {
 		return err
 	}
-	embeddingsFactory := embeddings.NewSettingsFactory(embeddingsSettings)
-	additionalTags := map[string]emrichen.TagFunc{
-		"!Embeddings": embeddingsFactory.GetEmbeddingTagFunc(),
+	additionalTags := map[string]emrichen.TagFunc{}
+	if embeddingsProviderFactory != nil {
+		additionalTags["!Embeddings"] = embeddingsProviderFactory.GetEmbeddingTagFunc()
 	}
 
 	ps_ := parsedLayers.GetDataMap()
@@ -389,11 +415,11 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 	// Prepare search options
 	options := []func(*esapi.SearchRequest){}
 
-	options = append(options, es.(*es_layers.ElasticsearchClient).Search.WithExplain(esHelperSettings.Explain))
+	options = append(options, es.Search.WithExplain(esHelperSettings.Explain))
 	if esHelperSettings.Index != "" {
-		options = append(options, es.(*es_layers.ElasticsearchClient).Search.WithIndex(esHelperSettings.Index))
+		options = append(options, es.Search.WithIndex(esHelperSettings.Index))
 	} else if esc.DefaultIndex != "" {
-		options = append(options, es.(*es_layers.ElasticsearchClient).Search.WithIndex(esc.DefaultIndex))
+		options = append(options, es.Search.WithIndex(esc.DefaultIndex))
 	} else {
 		return errors.New("No index specified")
 	}
@@ -487,7 +513,7 @@ type ElasticSearchResult struct {
 // RunRawQuery executes an Elasticsearch query and returns raw results without Glaze processing
 func (esc *ElasticSearchCommand) RunRawQuery(
 	ctx context.Context,
-	es es_layers.SearchClient,
+	client *elasticsearch.Client,
 	embeddingsFactory *embeddings.SettingsFactory,
 	parameters map[string]interface{},
 ) (map[string]interface{}, error) {
@@ -501,15 +527,15 @@ func (esc *ElasticSearchCommand) RunRawQuery(
 
 	// Add index if specified
 	if index, ok := parameters["index"].(string); ok && index != "" {
-		options = append(options, es.(*es_layers.ElasticsearchClient).Search.WithIndex(index))
+		options = append(options, client.Search.WithIndex(index))
 	} else if esc.DefaultIndex != "" {
-		options = append(options, es.(*es_layers.ElasticsearchClient).Search.WithIndex(esc.DefaultIndex))
+		options = append(options, client.Search.WithIndex(esc.DefaultIndex))
 	} else {
 		return nil, errors.New("No index specified")
 	}
 
 	// Execute the query
-	body, err := esc.executeQuery(ctx, es, parameters, additionalTags, options...)
+	body, err := esc.executeQuery(ctx, client, parameters, additionalTags, options...)
 	if err != nil {
 		return nil, err
 	}

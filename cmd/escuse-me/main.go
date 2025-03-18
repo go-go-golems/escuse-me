@@ -43,7 +43,7 @@ func main() {
 	if len(os.Args) >= 3 && os.Args[1] == "run-command" && os.Args[2] != "--help" {
 		// load the command
 		clientFactory := layers.NewSearchClientFromParsedLayers
-		loader := es_cmds.NewElasticSearchCommandLoader(clientFactory)
+		loader := es_cmds.NewElasticSearchCommandLoader(clientFactory, nil)
 
 		fs_, filePath, err := loaders.FileNameToFsFilePath(os.Args[2])
 		if err != nil {
@@ -138,7 +138,7 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	repositoryPaths = append(repositoryPaths, defaultDirectory)
 
 	clientFactory := layers.NewSearchClientFromParsedLayers
-	loader := es_cmds.NewElasticSearchCommandLoader(clientFactory)
+	loader := es_cmds.NewElasticSearchCommandLoader(clientFactory, nil)
 
 	directories := []repositories.Directory{
 		{
