@@ -28,7 +28,8 @@ import (
 //   - this data is passed to the template at evaluation file,
 //     and can be used to store things like tags and constant strings, boost values and the like
 type ElasticSearchCommandLoader struct {
-	clientFactory SearchClientFactory
+	clientFactory     SearchClientFactory
+	embeddingsFactory EmbeddingsFactory
 }
 
 type RawNode struct {
@@ -44,9 +45,11 @@ var _ loaders.CommandLoader = (*ElasticSearchCommandLoader)(nil)
 
 func NewElasticSearchCommandLoader(
 	clientFactory SearchClientFactory,
+	embeddingsFactory EmbeddingsFactory,
 ) *ElasticSearchCommandLoader {
 	return &ElasticSearchCommandLoader{
-		clientFactory: clientFactory,
+		clientFactory:     clientFactory,
+		embeddingsFactory: embeddingsFactory,
 	}
 }
 
@@ -141,6 +144,7 @@ func (escl *ElasticSearchCommandLoader) loadCommandsFromFile(
 	esc, err := NewElasticSearchCommand(
 		description,
 		escl.clientFactory,
+		escl.embeddingsFactory,
 		"",
 		escd.Query,
 		escd.DefaultIndex,
@@ -219,6 +223,7 @@ func (escl *ElasticSearchCommandLoader) loadCommandsFromDir(
 	esc, err := NewElasticSearchCommand(
 		description,
 		escl.clientFactory,
+		escl.embeddingsFactory,
 		queryTemplate,
 		escd.Query,
 		escd.DefaultIndex,
