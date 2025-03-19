@@ -89,8 +89,8 @@ github.com/go-go-golems/geppetto v0.4.43 h1:6zufUyA0ePWHvKBImV9nBqnEuB1dKobXeh82
 github.com/go-go-golems/geppetto v0.4.43/go.mod h1:tfGwyL3AOuXJSrO3ikCYqpeVuOEtpm9OIJgKaTQLQZM=
 github.com/go-go-golems/glazed v0.5.37 h1:pb+0dJ1IYU9guf5zas4RaaOtE16H3NPFm1mmY0rnuVs=
 github.com/go-go-golems/glazed v0.5.37/go.mod h1:cySRZANlIpuZNBTYkofLe8ls7M6O/aur4spck3J7O7w=
-github.com/go-go-golems/go-emrichen v0.0.4 h1:U8AKGaxBDjMghiZZe/7sRYiw3UPqRkkbAAc/d2Q9rK4=
-github.com/go-go-golems/go-emrichen v0.0.4/go.mod h1:yYf0DLUYLLZdvCODdpIBYUxgNz0ZomJFlGhhzlg+fs0=
+github.com/go-go-golems/go-emrichen v0.0.5 h1:zCmwTjvj7vtNWKj9JC1OYOgLiQ2OYZSHLZR1XoZv534=
+github.com/go-go-golems/go-emrichen v0.0.5/go.mod h1:SKKb5juUGwK7rTWFXYFrjFdM9GxfXdRCY9Lhc2MHx8U=
 github.com/go-go-golems/parka v0.5.21 h1:wZNzBeA40qeCabvpWoN2HQUwdCTe0C59Hr6ia6forNU=
 github.com/go-go-golems/parka v0.5.21/go.mod h1:RbJnHh9DTutqsuRJBfcAnSnqOd1MEANEDhydJEZr0Ss=
 github.com/go-logr/logr v1.2.2/go.mod h1:jdQByPbusPIv2/zmleS9BjJVeZ6kBagPoEUsqbVz/1A=

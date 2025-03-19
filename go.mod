@@ -9,7 +9,7 @@ require (
 	github.com/go-go-golems/clay v0.1.33
 	github.com/go-go-golems/geppetto v0.4.43
 	github.com/go-go-golems/glazed v0.5.37
-	github.com/go-go-golems/go-emrichen v0.0.4
+	github.com/go-go-golems/go-emrichen v0.0.5
 	github.com/go-go-golems/parka v0.5.21
 	github.com/opensearch-project/opensearch-go/v4 v4.4.0
 	github.com/pkg/errors v0.9.1
