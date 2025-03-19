@@ -15,6 +15,7 @@ import (
 	es_cmds "github.com/go-go-golems/escuse-me/pkg/cmds"
 	"github.com/go-go-golems/escuse-me/pkg/cmds/layers"
 	"github.com/go-go-golems/escuse-me/pkg/doc"
+	"github.com/go-go-golems/geppetto/pkg/embeddings"
 	"github.com/go-go-golems/glazed/pkg/cli"
 	glazed_cmds "github.com/go-go-golems/glazed/pkg/cmds"
 	"github.com/go-go-golems/glazed/pkg/cmds/alias"
@@ -43,7 +44,8 @@ func main() {
 	if len(os.Args) >= 3 && os.Args[1] == "run-command" && os.Args[2] != "--help" {
 		// load the command
 		clientFactory := layers.NewSearchClientFromParsedLayers
-		loader := es_cmds.NewElasticSearchCommandLoader(clientFactory, nil)
+		embeddingsFactory := embeddings.NewSettingsFactoryFromParsedLayers
+		loader := es_cmds.NewElasticSearchCommandLoader(clientFactory, embeddingsFactory)
 
 		fs_, filePath, err := loaders.FileNameToFsFilePath(os.Args[2])
 		if err != nil {
@@ -58,7 +60,8 @@ func main() {
 			glazed_cmds.WithLayersList(esParameterLayer),
 		}
 		aliasOptions := []alias.Option{}
-		cmds, err := loader.LoadCommands(fs_, filePath, options, aliasOptions)
+		cmds, err := loader.LoadCommands(
+			fs_, filePath, options, aliasOptions)
 		if err != nil {
 			fmt.Printf("Could not load command: %v\n", err)
 			os.Exit(1)
@@ -138,7 +141,11 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	repositoryPaths = append(repositoryPaths, defaultDirectory)
 
 	clientFactory := layers.NewSearchClientFromParsedLayers
-	loader := es_cmds.NewElasticSearchCommandLoader(clientFactory, nil)
+	embeddingsFactory := embeddings.NewSettingsFactoryFromParsedLayers
+	loader := es_cmds.NewElasticSearchCommandLoader(
+		clientFactory,
+		embeddingsFactory,
+	)
 
 	directories := []repositories.Directory{
 		{

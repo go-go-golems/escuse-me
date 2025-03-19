@@ -112,18 +112,22 @@ func (esc *ElasticSearchCommand) RunIntoGlazeProcessor(
 	parsedLayers *layers.ParsedLayers,
 	gp middlewares.Processor,
 ) error {
+	log.Debug().Msg("Running into Glaze processor")
+
 	if esc.clientFactory == nil {
 		return errors.New("clientFactory is nil")
 	}
 
 	es, err := esc.clientFactory(parsedLayers)
 	if err != nil {
+		log.Error().Err(err).Msg("Could not create ES client")
 		return errors.Wrapf(err, "Could not create ES client")
 	}
 
 	esHelperSettings := &es_layers.ESHelperSettings{}
 	err = parsedLayers.InitializeStruct(es_layers.ESHelpersSlug, esHelperSettings)
 	if err != nil {
+		log.Error().Err(err).Msg("Could not initialize ES helper settings")
 		return err
 	}
 
@@ -151,6 +155,7 @@ func (esc *ElasticSearchCommand) RunIntoGlazeProcessor(
 	if esc.embeddingsFactory != nil {
 		embeddingsFactory, err := esc.embeddingsFactory(parsedLayers)
 		if err != nil {
+			log.Error().Err(err).Msg("Could not create embeddings factory")
 			return errors.Wrapf(err, "Could not create embeddings factory")
 		}
 		embeddingsProviderFactory = embeddingsFactory
@@ -194,16 +199,22 @@ func (esc *ElasticSearchCommand) renderNodeQuery(parameters map[string]interface
 		return nil, errors.New("No query template found")
 	}
 
+	// Add the !Now tag handler
+	if additionalTags == nil {
+		additionalTags = map[string]emrichen.TagFunc{}
+	}
 	ei, err := emrichen.NewInterpreter(
 		emrichen.WithVars(parameters),
 		emrichen.WithAdditionalTags(additionalTags),
 	)
 	if err != nil {
+		log.Error().Err(err).Msg("Could not create emrichen interpreter")
 		return nil, err
 	}
 
 	v, err := ei.Process(esc.QueryNodeTemplate.node)
 	if err != nil {
+		log.Error().Err(err).Msg("Could not process emrichen node")
 		return nil, err
 	}
 
@@ -331,10 +342,12 @@ func (esc *ElasticSearchCommand) executeQuery(
 	// Render the query to JSON
 	query, err := esc.RenderQueryToJSON(parameters, additionalTags)
 	if err != nil {
+		log.Error().Err(err).Msg("Could not generate query")
 		return nil, errors.Wrapf(err, "Could not generate query")
 	}
 
 	if es == nil {
+		log.Error().Msg("ES client is nil")
 		return nil, errors.New("ES client is nil")
 	}
 
@@ -350,6 +363,7 @@ func (esc *ElasticSearchCommand) executeQuery(
 	os_ = append(os_, options...)
 
 	// Execute the search
+	log.Trace().Str("query", query).Msg("Running query")
 	res, err := es.Search(os_...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Could not run query")
@@ -375,6 +389,7 @@ func (esc *ElasticSearchCommand) executeQuery(
 			return nil, errors.New("Error parsing the response body")
 		}
 
+		log.Error().Interface("error", e).Msg("Error running query")
 		// Return the error message
 		errMessage := fmt.Sprintf("[%s] %s: %s", res.Status(), e["error"].(map[string]interface{})["type"], e["error"].(map[string]interface{})["reason"])
 		return body, errors.New(errMessage)
@@ -478,6 +493,8 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 		return errors.New("Error parsing the response body")
 	}
 
+	log.Debug().Int("hits", len(r.Hits.Hits)).Msg("Hits")
+
 	// Process hits
 	for _, hit := range r.Hits.Hits {
 		row := hit.Source
@@ -498,16 +515,6 @@ func (esc *ElasticSearchCommand) RunQueryIntoGlaze(
 	}
 
 	return nil
-}
-
-type ElasticSearchResult struct {
-	Hits struct {
-		Hits []struct {
-			Source *orderedmap.OrderedMap[string, interface{}] `json:"_source,omitempty"`
-			Score  float64                                     `json:"_score"`
-		} `json:"hits,omitempty"`
-	} `json:"hits"`
-	Aggregations map[string]json.RawMessage `json:"aggregations,omitempty"`
 }
 
 // RunRawQuery executes an Elasticsearch query and returns raw results without Glaze processing
