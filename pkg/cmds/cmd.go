@@ -523,7 +523,7 @@ func (esc *ElasticSearchCommand) RunRawQuery(
 	client *elasticsearch.Client,
 	embeddingsFactory *embeddings.SettingsFactory,
 	parameters map[string]interface{},
-) (map[string]interface{}, error) {
+) (*ElasticSearchResult, error) {
 	// Create embeddings settings and additional tags
 	additionalTags := map[string]emrichen.TagFunc{
 		"!Embeddings": embeddingsFactory.GetEmbeddingTagFunc(),
@@ -547,11 +547,11 @@ func (esc *ElasticSearchCommand) RunRawQuery(
 		return nil, err
 	}
 
-	// Parse the JSON response
-	var result map[string]interface{}
+	// Parse the response into ElasticSearchResult
+	var result ElasticSearchResult
 	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, errors.New("Error parsing the response body")
+		return nil, errors.Wrap(err, "Error parsing the response body")
 	}
 
-	return result, nil
+	return &result, nil
 }
