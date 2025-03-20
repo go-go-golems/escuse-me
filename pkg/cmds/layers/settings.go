@@ -15,6 +15,7 @@ import (
 	"github.com/go-go-golems/glazed/pkg/cmds/parameters"
 	opensearch "github.com/opensearch-project/opensearch-go/v4"
 	"github.com/opensearch-project/opensearch-go/v4/opensearchapi"
+	"github.com/rs/zerolog/log"
 )
 
 //go:embed "flags/es.yaml"
@@ -67,16 +68,25 @@ type EsClientSettings struct {
 
 // ListIndices implements the SearchClient interface for ElasticsearchClient
 func (c *ElasticsearchClient) ListIndices(ctx context.Context) ([]byte, error) {
+	log.Debug().Msg("Listing indices using ElasticsearchClient")
 	res, err := c.Cat.Indices(c.Cat.Indices.WithFormat("json"))
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to list indices with ElasticsearchClient")
 		return nil, err
 	}
 	defer res.Body.Close()
-	return io.ReadAll(res.Body)
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to read response body from ElasticsearchClient")
+		return nil, err
+	}
+	log.Debug().Int("bytes", len(data)).Msg("Successfully retrieved indices from ElasticsearchClient")
+	return data, nil
 }
 
 // ListIndices implements the SearchClient interface for OpenSearchClient
 func (c *OpenSearchClient) ListIndices(ctx context.Context) ([]byte, error) {
+	log.Debug().Msg("Listing indices using OpenSearchClient")
 	// Use the OpenSearch API client to get indices
 	req_ := opensearchapi.CatIndicesReq{
 		Params: opensearchapi.CatIndicesParams{
@@ -86,60 +96,92 @@ func (c *OpenSearchClient) ListIndices(ctx context.Context) ([]byte, error) {
 
 	resp, err := c.Cat.Indices(ctx, &req_)
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to list indices with OpenSearchClient")
 		return nil, err
 	}
 
-	return []byte(resp.Inspect().Response.String()), nil
+	responseStr := resp.Inspect().Response.String()
+	log.Debug().Int("bytes", len(responseStr)).Msg("Successfully retrieved indices from OpenSearchClient")
+	return []byte(responseStr), nil
 }
 
 func NewESParameterLayer(options ...layers.ParameterLayerOptions) (*EsParameterLayer, error) {
+	log.Debug().Msg("Creating new ES parameter layer")
 	ret, err := layers.NewParameterLayerFromYAML(esFlagsYaml, options...)
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to create ES parameter layer from YAML")
 		return nil, err
 	}
+	log.Debug().Msg("Successfully created ES parameter layer")
 	return &EsParameterLayer{ParameterLayerImpl: ret}, nil
 }
 
 func NewESClientSettingsFromParsedLayers(parsedLayers *layers.ParsedLayers) (*EsClientSettings, error) {
+	log.Debug().Msg("Creating ES client settings from parsed layers")
 	ret := &EsClientSettings{}
 	err := parsedLayers.InitializeStruct(EsConnectionSlug, ret)
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to initialize struct from parsed layers")
 		return nil, err
 	}
+	log.Debug().Strs("addresses", ret.Addresses).Str("client-type", ret.ClientType).Msg("Successfully created ES client settings")
 	return ret, nil
 }
 
 func NewSearchClientFromParsedLayers(
 	parsedLayers *layers.ParsedLayers,
 ) (SearchClient, error) {
+	log.Debug().Msg("Creating search client from parsed layers")
 	settings, err := NewESClientSettingsFromParsedLayers(parsedLayers)
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to create ES client settings from parsed layers")
 		return nil, err
 	}
 	if settings == nil {
+		log.Debug().Msg("No ES settings found, returning nil client")
 		return nil, nil
 	}
 
+	log.Debug().Str("client-type", settings.ClientType).Msg("Creating search client with type")
+	var client SearchClient
+	var errClient error
+
 	switch settings.ClientType {
 	case "opensearch":
-		return newOpenSearchClient(settings)
+		client, errClient = newOpenSearchClient(settings)
 	default: // "elasticsearch" or empty string
-		return newElasticsearchClient(settings)
+		client, errClient = newElasticsearchClient(settings)
 	}
+
+	if errClient != nil {
+		log.Error().Err(errClient).Str("client-type", settings.ClientType).Msg("Failed to create search client")
+		return nil, errClient
+	}
+
+	return client, nil
 }
 
 func NewESClientFromParsedLayers(
 	parsedLayers *layers.ParsedLayers,
 ) (*ElasticsearchClient, error) {
+	log.Debug().Msg("Creating ES client from parsed layers")
 	settings, err := NewESClientSettingsFromParsedLayers(parsedLayers)
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to create ES client settings from parsed layers")
 		return nil, err
 	}
 
-	return newElasticsearchClient(settings)
+	client, err := newElasticsearchClient(settings)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create Elasticsearch client from settings")
+		return nil, err
+	}
+
+	return client, nil
 }
 
 func newElasticsearchClient(settings *EsClientSettings) (*ElasticsearchClient, error) {
+	log.Debug().Strs("addresses", settings.Addresses).Msg("Creating new Elasticsearch client")
 	cfg := elasticsearch.Config{
 		Addresses:               settings.Addresses,
 		Username:                settings.Username,
@@ -164,29 +206,41 @@ func newElasticsearchClient(settings *EsClientSettings) (*ElasticsearchClient, e
 		DisableMetaHeader:    settings.DisableMetaHeader,
 	}
 
+	log.Debug().
+		Bool("insecureSkipVerify", settings.InsecureSkipVerify).
+		Bool("enableDebugLogger", settings.EnableDebugLogger).
+		Bool("discoverNodesOnStart", settings.DiscoverNodesOnStart).
+		Msg("Configured Elasticsearch client options")
+
 	if settings.CACert != nil {
+		log.Debug().Int("certLength", len(settings.CACert.RawContent)).Msg("Using provided CA certificate")
 		cfg.CACert = settings.CACert.RawContent
 	}
 
 	if settings.RetryBackoff != nil {
 		backoff := *settings.RetryBackoff
+		log.Debug().Int("backoffSeconds", backoff).Msg("Using custom retry backoff")
 		cfg.RetryBackoff = func(attempt int) time.Duration {
 			return time.Duration(backoff) * time.Second
 		}
 	}
 
 	if settings.DiscoverNodesInterval != nil {
+		log.Debug().Int("intervalSeconds", *settings.DiscoverNodesInterval).Msg("Using custom discover nodes interval")
 		cfg.DiscoverNodesInterval = time.Duration(*settings.DiscoverNodesInterval) * time.Second
 	}
 
 	es, err := elasticsearch.NewClient(cfg)
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to create Elasticsearch client")
 		return nil, err
 	}
+	log.Debug().Msg("Successfully created Elasticsearch client")
 	return &ElasticsearchClient{Client: es}, nil
 }
 
 func newOpenSearchClient(settings *EsClientSettings) (*OpenSearchClient, error) {
+	log.Debug().Strs("addresses", settings.Addresses).Msg("Creating new OpenSearch client")
 	cfg := opensearch.Config{
 		Addresses:         settings.Addresses,
 		Username:          settings.Username,
@@ -205,18 +259,27 @@ func newOpenSearchClient(settings *EsClientSettings) (*OpenSearchClient, error) 
 		DiscoverNodesOnStart: settings.DiscoverNodesOnStart,
 	}
 
+	log.Debug().
+		Bool("insecureSkipVerify", settings.InsecureSkipVerify).
+		Bool("enableDebugLogger", settings.EnableDebugLogger).
+		Bool("discoverNodesOnStart", settings.DiscoverNodesOnStart).
+		Msg("Configured OpenSearch client options")
+
 	if settings.CACert != nil {
+		log.Debug().Int("certLength", len(settings.CACert.RawContent)).Msg("Using provided CA certificate")
 		cfg.CACert = settings.CACert.RawContent
 	}
 
 	if settings.RetryBackoff != nil {
 		backoff := *settings.RetryBackoff
+		log.Debug().Int("backoffSeconds", backoff).Msg("Using custom retry backoff")
 		cfg.RetryBackoff = func(attempt int) time.Duration {
 			return time.Duration(backoff) * time.Second
 		}
 	}
 
 	if settings.DiscoverNodesInterval != nil {
+		log.Debug().Int("intervalSeconds", *settings.DiscoverNodesInterval).Msg("Using custom discover nodes interval")
 		cfg.DiscoverNodesInterval = time.Duration(*settings.DiscoverNodesInterval) * time.Second
 	}
 
@@ -230,12 +293,15 @@ func newOpenSearchClient(settings *EsClientSettings) (*OpenSearchClient, error) 
 		},
 	})
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to create OpenSearch client")
 		return nil, err
 	}
+	log.Debug().Msg("Successfully created OpenSearch client")
 	return &OpenSearchClient{Client: os}, nil
 }
 
 func (s *EsClientSettings) GetSummary(verbose bool) string {
+	log.Debug().Bool("verbose", verbose).Msg("Generating ES client settings summary")
 	var summary strings.Builder
 
 	// Always show core connection settings
@@ -312,5 +378,7 @@ func (s *EsClientSettings) GetSummary(verbose bool) string {
 		summary.WriteString(fmt.Sprintf("  - Disable Meta Header: %v\n", s.DisableMetaHeader))
 	}
 
-	return summary.String()
+	result := summary.String()
+	log.Debug().Int("summaryLength", len(result)).Msg("Generated ES client settings summary")
+	return result
 }
