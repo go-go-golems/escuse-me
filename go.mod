@@ -6,9 +6,9 @@ toolchain go1.23.7
 
 require (
 	github.com/elastic/go-elasticsearch/v8 v8.17.0
-	github.com/go-go-golems/clay v0.1.33
-	github.com/go-go-golems/geppetto v0.4.43
-	github.com/go-go-golems/glazed v0.5.37
+	github.com/go-go-golems/clay v0.1.34
+	github.com/go-go-golems/geppetto v0.4.44
+	github.com/go-go-golems/glazed v0.5.39
 	github.com/go-go-golems/go-emrichen v0.0.5
 	github.com/go-go-golems/parka v0.5.21
 	github.com/opensearch-project/opensearch-go/v4 v4.4.0
@@ -17,7 +17,7 @@ require (
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
 	github.com/wk8/go-ordered-map/v2 v2.1.8
-	golang.org/x/sync v0.10.0
+	golang.org/x/sync v0.11.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
