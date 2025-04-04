@@ -32,12 +32,6 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "escuse-me",
 	Short: "GO GO GOLEM ESCUSE ME ELASTIC SEARCH GADGET",
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// reinitialize the logger because we can now parse --log-level and co
-		// from the command line flag
-		err := clay.InitLogger()
-		cobra.CheckErr(err)
-	},
 }
 
 func main() {
@@ -123,11 +117,6 @@ func initRootCmd() (*help.HelpSystem, error) {
 
 	err = clay.InitViper("escuse-me", rootCmd)
 	cobra.CheckErr(err)
-	err = clay.InitLogger()
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Error initializing logger: %s\n", err)
-		os.Exit(1)
-	}
 
 	rootCmd.AddCommand(runCommandCmd)
 	return helpSystem, nil
