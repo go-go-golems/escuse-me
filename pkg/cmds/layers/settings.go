@@ -74,7 +74,11 @@ func (c *ElasticsearchClient) ListIndices(ctx context.Context) ([]byte, error) {
 		log.Error().Err(err).Msg("Failed to list indices with ElasticsearchClient")
 		return nil, err
 	}
-	defer res.Body.Close()
+	defer func() {
+		if err := res.Body.Close(); err != nil {
+			log.Error().Err(err).Msg("Failed to close response body")
+		}
+	}()
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to read response body from ElasticsearchClient")
@@ -198,6 +202,8 @@ func newElasticsearchClient(settings *EsClientSettings) (*ElasticsearchClient, e
 		EnableCompatibilityMode: settings.EnableCompatibilityMode,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
+				// #nosec G402 -- InsecureSkipVerify is configurable by the user for testing/development.
+				// In production environments, this should be set to false or proper certificates should be used.
 				InsecureSkipVerify: settings.InsecureSkipVerify,
 			},
 		},
@@ -252,6 +258,8 @@ func newOpenSearchClient(settings *EsClientSettings) (*OpenSearchClient, error) 
 		EnableDebugLogger: settings.EnableDebugLogger,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
+				// #nosec G402 -- InsecureSkipVerify is configurable by the user for testing/development.
+				// In production environments, this should be set to false or proper certificates should be used.
 				InsecureSkipVerify: settings.InsecureSkipVerify,
 			},
 		},
@@ -287,6 +295,8 @@ func newOpenSearchClient(settings *EsClientSettings) (*OpenSearchClient, error) 
 		Client: opensearch.Config{
 			Transport: &http.Transport{
 				TLSClientConfig: &tls.Config{
+					// #nosec G402 -- InsecureSkipVerify is configurable by the user for testing/development.
+					// In production environments, this should be set to false or proper certificates should be used.
 					InsecureSkipVerify: settings.InsecureSkipVerify,
 				},
 			},

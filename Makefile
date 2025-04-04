@@ -1,6 +1,6 @@
-.PHONY: gifs
+.PHONY: all test build lint lintmax docker-lint gosec govulncheck goreleaser tag-major tag-minor tag-patch release bump-glazed install gifs
 
-all: gifs
+all: test build
 
 VERSION=v0.0.7
 
@@ -9,10 +9,21 @@ gifs: $(TAPES)
 	for i in $(TAPES); do vhs < $$i; done
 
 docker-lint:
-	docker run --rm -v $(shell pwd):/app -w /app golangci/golangci-lint:v1.50.1 golangci-lint run -v
+	docker run --rm -v $(shell pwd):/app -w /app golangci/golangci-lint:v2.0.2 golangci-lint run -v
 
 lint:
 	golangci-lint run -v
+
+lintmax:
+	golangci-lint run -v --max-same-issues=100
+
+gosec:
+	go install github.com/securego/gosec/v2/cmd/gosec@latest
+	gosec -exclude=G101,G304,G301,G306,G204 -exclude-dir=.history ./...
+
+govulncheck:
+	go install golang.org/x/vuln/cmd/govulncheck@latest
+	govulncheck ./...
 
 test:
 	go test ./...
@@ -44,9 +55,6 @@ bump-glazed:
 	go get -u -t -x github.com/go-go-golems/go-emrichen@latest
 	go get -u -t -x github.com/go-go-golems/geppetto@latest
 	go mod tidy
-
-exhaustive:
-	golangci-lint run -v --enable=exhaustive
 
 ESCUSE_ME_BINARY=$(shell which escuse-me)
 

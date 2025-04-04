@@ -196,6 +196,11 @@ func (s *ServeCommand) Run(
 		return err
 	}
 
+	// Validate port bounds
+	if ss.ServePort < 0 || ss.ServePort > 65535 {
+		return errors.Errorf("port %d is out of range, must be between 0 and 65535", ss.ServePort)
+	}
+
 	serverOptions := []server.ServerOption{
 		server.WithPort(uint16(ss.ServePort)),
 		server.WithAddress(ss.ServeHost),

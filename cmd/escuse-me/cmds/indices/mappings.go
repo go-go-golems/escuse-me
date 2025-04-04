@@ -269,7 +269,8 @@ func flattenMappingField(name string, v map[string]interface{}) []map[string]int
 	}
 
 	for k, v := range v {
-		if k == "fields" {
+		switch k {
+		case "fields":
 			fields := []string{}
 			for k3 := range v.(map[string]interface{}) {
 				fields = append(fields, k3)
@@ -277,14 +278,14 @@ func flattenMappingField(name string, v map[string]interface{}) []map[string]int
 			fieldList := strings.Join(fields, ",")
 			row["fields"] = fieldList
 			log.Debug().Str("field", name).Str("fields", fieldList).Msg("Added sub-fields")
-		} else if k == "properties" {
+		case "properties":
 			log.Debug().Str("field", name).Msg("Processing nested properties")
 			for k3, v3 := range v.(map[string]interface{}) {
 				nestedFields := flattenMappingField(name+"."+k3, v3.(map[string]interface{}))
 				ret = append(ret, nestedFields...)
 				log.Debug().Str("field", name).Str("nestedField", k3).Int("nestedCount", len(nestedFields)).Msg("Added nested fields")
 			}
-		} else {
+		default:
 			row[k] = v
 		}
 	}
