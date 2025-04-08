@@ -25,6 +25,21 @@
             ],
             "envFile": "${workspaceFolder}/.envrc"
         },
+        //  --log-level debug commands  list --log-file /tmp/escuse-me.log
+        {
+            "name": "Commands List",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/escuse-me",
+            "args": [
+                "commands",
+                "list",
+                "--log-file",
+                "/tmp/escuse-me.log"
+            ],
+            "envFile": "${workspaceFolder}/.envrc"
+        },
         {
             "name": "Search Summaries Embeddings",
             "type": "go",

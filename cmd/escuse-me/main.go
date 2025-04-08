@@ -8,9 +8,8 @@ import (
 	"syscall"
 
 	clay "github.com/go-go-golems/clay/pkg"
-	edit_command "github.com/go-go-golems/clay/pkg/cmds/edit-command"
-	ls_commands "github.com/go-go-golems/clay/pkg/cmds/ls-commands"
-	filter_command "github.com/go-go-golems/clay/pkg/filters/command/cmds"
+	clay_commandmeta "github.com/go-go-golems/clay/pkg/cmds/commandmeta"
+	clay_profiles "github.com/go-go-golems/clay/pkg/cmds/profiles"
 	"github.com/go-go-golems/clay/pkg/repositories"
 	cli_cmds "github.com/go-go-golems/escuse-me/cmd/escuse-me/cmds"
 	"github.com/go-go-golems/escuse-me/cmd/escuse-me/cmds/documents"
@@ -24,6 +23,7 @@ import (
 	"github.com/go-go-golems/glazed/pkg/cmds/alias"
 	glazed_layers "github.com/go-go-golems/glazed/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds/loaders"
+	"github.com/go-go-golems/glazed/pkg/cmds/logging"
 	"github.com/go-go-golems/glazed/pkg/help"
 	"github.com/go-go-golems/glazed/pkg/types"
 	parka_doc "github.com/go-go-golems/parka/pkg/doc"
@@ -33,7 +33,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	clay_profiles "github.com/go-go-golems/clay/pkg/cmds/profiles"
 	clay_repositories "github.com/go-go-golems/clay/pkg/cmds/repositories"
 )
 
@@ -45,7 +44,12 @@ var profiler interface {
 var rootCmd = &cobra.Command{
 	Use:   "escuse-me",
 	Short: "GO GO GOLEM ESCUSE ME ELASTIC SEARCH GADGET",
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		err := logging.InitLoggerFromViper()
+		if err != nil {
+			return err
+		}
+
 		memProfile, _ := cmd.Flags().GetBool("mem-profile")
 		if memProfile {
 			log.Info().Msg("Starting memory profiler")
@@ -62,6 +66,7 @@ var rootCmd = &cobra.Command{
 				}
 			}()
 		}
+		return nil
 	},
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
 		if profiler != nil {
@@ -126,6 +131,8 @@ func main() {
 		err = initAllCommands(helpSystem)
 		cobra.CheckErr(err)
 	}
+
+	log.Debug().Msg("Executing escuse-me")
 
 	err := rootCmd.Execute()
 	cobra.CheckErr(err)
@@ -219,24 +226,15 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 		return err
 	}
 
-	// Create the commands group
-	commandsGroup := &cobra.Command{
-		Use:   "commands",
-		Short: "Commands for managing and filtering escuse-me commands",
-	}
-	rootCmd.AddCommand(commandsGroup)
-
-	// Create and add the list command
-	listCommandsCommand, err := ls_commands.NewListCommandsCommand(allCommands,
-		ls_commands.WithCommandDescriptionOptions(
-			glazed_cmds.WithShort("List escuse-me commands"),
-		),
-		ls_commands.WithAddCommandToRowFunc(func(
+	// Create and add the unified command management group
+	commandManagementCmd, err := clay_commandmeta.NewCommandManagementCommandGroup(
+		allCommands,
+		clay_commandmeta.WithListAddCommandToRowFunc(func(
 			command glazed_cmds.Command,
 			row types.Row,
 			parsedLayers *glazed_layers.ParsedLayers,
 		) ([]types.Row, error) {
-			ret := []types.Row{row}
+			// Keep the existing logic to set the 'type' based on the command
 			switch c := command.(type) {
 			case *es_cmds.ElasticSearchCommand:
 				// TODO(manuel, 2024-06-17) Add more command specific information here
@@ -245,14 +243,20 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 				row.Set("type", "escuse-me")
 			case *alias.CommandAlias:
 				row.Set("type", "alias")
+				row.Set("aliasFor", c.AliasFor)
 			default:
+				// Keep original type if set, otherwise mark unknown?
+				if _, ok := row.Get("type"); !ok {
+					row.Set("type", "unknown")
+				}
 			}
-			return ret, nil
+			return []types.Row{row}, nil
 		}),
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to initialize command management commands: %w", err)
 	}
+	rootCmd.AddCommand(commandManagementCmd)
 
 	infoCommand, err := cli_cmds.NewInfoCommand()
 	if err != nil {
@@ -283,33 +287,6 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	if err != nil {
 		return err
 	}
-	cobraListCommandsCommand, err := cli.BuildCobraCommandFromGlazeCommand(listCommandsCommand)
-	if err != nil {
-		return err
-	}
-	commandsGroup.AddCommand(cobraListCommandsCommand)
-
-	// Create and add the edit command
-	editCommandCommand, err := edit_command.NewEditCommand(allCommands)
-	if err != nil {
-		return err
-	}
-	cobraEditCommandCommand, err := cli.BuildCobraCommandFromCommand(editCommandCommand)
-	if err != nil {
-		return err
-	}
-	commandsGroup.AddCommand(cobraEditCommandCommand)
-
-	// Create and add the filter command
-	filterCommand, err := filter_command.NewFilterCommand(convertCommandsToDescriptions(allCommands))
-	if err != nil {
-		return err
-	}
-	cobraFilterCommand, err := cli.BuildCobraCommandFromGlazeCommand(filterCommand)
-	if err != nil {
-		return err
-	}
-	commandsGroup.AddCommand(cobraFilterCommand)
 
 	// Create and add the profiles command
 	profilesCmd, err := clay_profiles.NewProfilesCommand("escuse-me", escusemeInitialProfilesContent)
@@ -322,18 +299,6 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	rootCmd.AddCommand(clay_repositories.NewRepositoriesGroupCommand())
 
 	return nil
-}
-
-// convertCommandsToDescriptions converts a list of commands to their descriptions
-func convertCommandsToDescriptions(commands []glazed_cmds.Command) []*glazed_cmds.CommandDescription {
-	descriptions := make([]*glazed_cmds.CommandDescription, 0, len(commands))
-	for _, cmd := range commands {
-		if _, ok := cmd.(*alias.CommandAlias); ok {
-			continue
-		}
-		descriptions = append(descriptions, cmd.Description())
-	}
-	return descriptions
 }
 
 // escusemeInitialProfilesContent provides the default YAML content for a new escuse-me profiles file.
