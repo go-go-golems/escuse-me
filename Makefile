@@ -1,5 +1,10 @@
 .PHONY: all test build lint lintmax docker-lint gosec govulncheck goreleaser tag-major tag-minor tag-patch release bump-glazed install gifs codeql-local
 
+VERSION ?= $(shell svu)
+COMMIT ?= $(shell git rev-parse --short HEAD)
+DIRTY ?= $(shell git diff --quiet || echo "dirty")
+LDFLAGS=-ldflags "-X main.version=$(VERSION)-$(COMMIT)-$(DIRTY)"
+
 all: test build
 
 VERSION=v0.0.7

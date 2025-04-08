@@ -4,10 +4,13 @@ import (
 	"embed"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	clay "github.com/go-go-golems/clay/pkg"
 	edit_command "github.com/go-go-golems/clay/pkg/cmds/edit-command"
 	ls_commands "github.com/go-go-golems/clay/pkg/cmds/ls-commands"
+	filter_command "github.com/go-go-golems/clay/pkg/filters/command/cmds"
 	"github.com/go-go-golems/clay/pkg/repositories"
 	cli_cmds "github.com/go-go-golems/escuse-me/cmd/escuse-me/cmds"
 	"github.com/go-go-golems/escuse-me/cmd/escuse-me/cmds/documents"
@@ -25,13 +28,48 @@ import (
 	"github.com/go-go-golems/glazed/pkg/types"
 	parka_doc "github.com/go-go-golems/parka/pkg/doc"
 	"github.com/pkg/errors"
+	"github.com/pkg/profile"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	clay_profiles "github.com/go-go-golems/clay/pkg/cmds/profiles"
+	clay_repositories "github.com/go-go-golems/clay/pkg/cmds/repositories"
 )
+
+var version = "dev"
+var profiler interface {
+	Stop()
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "escuse-me",
 	Short: "GO GO GOLEM ESCUSE ME ELASTIC SEARCH GADGET",
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		memProfile, _ := cmd.Flags().GetBool("mem-profile")
+		if memProfile {
+			log.Info().Msg("Starting memory profiler")
+			profiler = profile.Start(profile.MemProfile)
+
+			// on SIGHUP, restart the profiler
+			sigCh := make(chan os.Signal, 1)
+			signal.Notify(sigCh, syscall.SIGHUP)
+			go func() {
+				for range sigCh {
+					log.Info().Msg("Restarting memory profiler")
+					profiler.Stop()
+					profiler = profile.Start(profile.MemProfile)
+				}
+			}()
+		}
+	},
+	PersistentPostRun: func(cmd *cobra.Command, args []string) {
+		if profiler != nil {
+			log.Info().Msg("Stopping memory profiler")
+			profiler.Stop()
+		}
+	},
+	Version: version,
 }
 
 func main() {
@@ -119,8 +157,8 @@ func initRootCmd() (*help.HelpSystem, error) {
 	cobra.CheckErr(err)
 
 	rootCmd.AddCommand(runCommandCmd)
+	rootCmd.PersistentFlags().Bool("mem-profile", false, "Enable memory profiling")
 	return helpSystem, nil
-
 }
 
 func initAllCommands(helpSystem *help.HelpSystem) error {
@@ -181,9 +219,17 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 		return err
 	}
 
-	lsCommandsCommand, err := ls_commands.NewListCommandsCommand(allCommands,
+	// Create the commands group
+	commandsGroup := &cobra.Command{
+		Use:   "commands",
+		Short: "Commands for managing and filtering escuse-me commands",
+	}
+	rootCmd.AddCommand(commandsGroup)
+
+	// Create and add the list command
+	listCommandsCommand, err := ls_commands.NewListCommandsCommand(allCommands,
 		ls_commands.WithCommandDescriptionOptions(
-			glazed_cmds.WithShort("Commands related to sqleton queries"),
+			glazed_cmds.WithShort("List escuse-me commands"),
 		),
 		ls_commands.WithAddCommandToRowFunc(func(
 			command glazed_cmds.Command,
@@ -193,23 +239,20 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 			ret := []types.Row{row}
 			switch c := command.(type) {
 			case *es_cmds.ElasticSearchCommand:
-				row.Set("query", c.QueryStringTemplate)
+				// TODO(manuel, 2024-06-17) Add more command specific information here
+				// For example, the query template
+				_ = c
 				row.Set("type", "escuse-me")
+			case *alias.CommandAlias:
+				row.Set("type", "alias")
 			default:
 			}
-
 			return ret, nil
 		}),
 	)
 	if err != nil {
 		return err
 	}
-	cobraQueriesCommand, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(lsCommandsCommand)
-	if err != nil {
-		return err
-	}
-
-	rootCmd.AddCommand(cobraQueriesCommand)
 
 	infoCommand, err := cli_cmds.NewInfoCommand()
 	if err != nil {
@@ -240,36 +283,13 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	if err != nil {
 		return err
 	}
-
-	listCommandsCommand, err := ls_commands.NewListCommandsCommand(allCommands,
-		ls_commands.WithCommandDescriptionOptions(
-			glazed_cmds.WithShort("Commands related to sqleton queries"),
-		),
-		ls_commands.WithAddCommandToRowFunc(func(
-			command glazed_cmds.Command,
-			row types.Row,
-			parsedLayers *glazed_layers.ParsedLayers,
-		) ([]types.Row, error) {
-			ret := []types.Row{row}
-			switch command.(type) {
-			case *es_cmds.ElasticSearchCommand:
-				row.Set("type", "escuse-me")
-			default:
-			}
-
-			return ret, nil
-		}),
-	)
-
-	if err != nil {
-		return err
-	}
 	cobraListCommandsCommand, err := cli.BuildCobraCommandFromGlazeCommand(listCommandsCommand)
 	if err != nil {
 		return err
 	}
-	rootCmd.AddCommand(cobraListCommandsCommand)
+	commandsGroup.AddCommand(cobraListCommandsCommand)
 
+	// Create and add the edit command
 	editCommandCommand, err := edit_command.NewEditCommand(allCommands)
 	if err != nil {
 		return err
@@ -278,7 +298,88 @@ func initAllCommands(helpSystem *help.HelpSystem) error {
 	if err != nil {
 		return err
 	}
-	rootCmd.AddCommand(cobraEditCommandCommand)
+	commandsGroup.AddCommand(cobraEditCommandCommand)
+
+	// Create and add the filter command
+	filterCommand, err := filter_command.NewFilterCommand(convertCommandsToDescriptions(allCommands))
+	if err != nil {
+		return err
+	}
+	cobraFilterCommand, err := cli.BuildCobraCommandFromGlazeCommand(filterCommand)
+	if err != nil {
+		return err
+	}
+	commandsGroup.AddCommand(cobraFilterCommand)
+
+	// Create and add the profiles command
+	profilesCmd, err := clay_profiles.NewProfilesCommand("escuse-me", escusemeInitialProfilesContent)
+	if err != nil {
+		return fmt.Errorf("failed to initialize profiles command: %w", err)
+	}
+	rootCmd.AddCommand(profilesCmd)
+
+	// Create and add the repositories command group
+	rootCmd.AddCommand(clay_repositories.NewRepositoriesGroupCommand())
 
 	return nil
+}
+
+// convertCommandsToDescriptions converts a list of commands to their descriptions
+func convertCommandsToDescriptions(commands []glazed_cmds.Command) []*glazed_cmds.CommandDescription {
+	descriptions := make([]*glazed_cmds.CommandDescription, 0, len(commands))
+	for _, cmd := range commands {
+		if _, ok := cmd.(*alias.CommandAlias); ok {
+			continue
+		}
+		descriptions = append(descriptions, cmd.Description())
+	}
+	return descriptions
+}
+
+// escusemeInitialProfilesContent provides the default YAML content for a new escuse-me profiles file.
+func escusemeInitialProfilesContent() string {
+	return `# Escuse-me Profiles Configuration
+#
+# This file allows defining profiles to override default ElasticSearch connection
+# settings or query parameters for escuse-me commands.
+#
+# Profiles are selected using the --profile <profile-name> flag.
+# Settings within a profile override the default values for the specified layer.
+#
+# Example:
+#
+# my-dev-cluster:
+#   # Override settings for the 'es-connection' layer
+#   es-connection:
+#     addresses: ["http://localhost:9201"]
+#     username: dev_user
+#     password: dev_password
+#     cloud-id: ""
+#     api-key: ""
+#
+#   # Override settings for the 'es-helpers' layer
+#   es-helpers:
+#     index: my_dev_index
+#     timeout: 15s # Lower timeout for development
+#
+# production-cluster:
+#   es-connection:
+#     # Assuming CLOUD_ID and ES_API_KEY are set in the environment for production
+#     # addresses: ["https://your-prod-cluster.elastic-cloud.com"]
+#     username: prod_user
+#     password: prod_password # Or use API Key
+#
+#   es-helpers:
+#     index: production_logs
+#     timeout: 60s # Default or longer timeout for production
+#
+# You can manage this file using the 'escuse-me profiles' commands:
+# - list: List all profiles
+# - get: Get profile settings
+# - set: Set a profile setting
+# - delete: Delete a profile, layer, or setting
+# - edit: Open this file in your editor
+# - init: Create this file if it doesn't exist
+# - duplicate: Copy an existing profile
+`
 }

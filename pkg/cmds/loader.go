@@ -1,6 +1,7 @@
 package cmds
 
 import (
+	"fmt"
 	"io/fs"
 	"path"
 	"path/filepath"
@@ -123,10 +124,19 @@ func (escl *ElasticSearchCommandLoader) loadCommandsFromFile(
 		return nil, err
 	}
 
+	if escd.Type == "" {
+		escd.Type = "escuse-me"
+	} else if escd.Type != "escuse-me" {
+		return nil, fmt.Errorf("invalid type: %s", escd.Type)
+	}
+
 	options_ := []cmds.CommandDescriptionOption{
 		cmds.WithName(escd.Name),
 		cmds.WithShort(escd.Short),
 		cmds.WithLong(escd.Long),
+		cmds.WithType(escd.Type),
+		cmds.WithTags(escd.Tags...),
+		cmds.WithMetadata(escd.Metadata),
 		cmds.WithFlags(escd.Flags...),
 		cmds.WithArguments(escd.Arguments...),
 		cmds.WithParents(parents...),
@@ -202,11 +212,20 @@ func (escl *ElasticSearchCommandLoader) loadCommandsFromDir(
 		return nil, errors.New("No query template specified")
 	}
 
+	if escd.Type == "" {
+		escd.Type = "escuse-me"
+	} else if escd.Type != "escuse-me" {
+		return nil, fmt.Errorf("invalid type: %s", escd.Type)
+	}
+
 	options_ := []cmds.CommandDescriptionOption{
 		cmds.WithName(escd.Name),
 		cmds.WithShort(escd.Short),
 		cmds.WithLong(escd.Long),
 		cmds.WithFlags(escd.Flags...),
+		cmds.WithType(escd.Type),
+		cmds.WithTags(escd.Tags...),
+		cmds.WithMetadata(escd.Metadata),
 		cmds.WithArguments(escd.Arguments...),
 		cmds.WithParents(parents...),
 		cmds.WithLayout(&layout.Layout{

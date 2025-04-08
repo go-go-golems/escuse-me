@@ -37,6 +37,8 @@ type EscuseMeCommandDescription struct {
 	Layout    []*layout.Section                 `yaml:"layout,omitempty"`
 	Flags     []*parameters.ParameterDefinition `yaml:"flags,omitempty"`
 	Arguments []*parameters.ParameterDefinition `yaml:"arguments,omitempty"`
+	Tags      []string                          `yaml:"tags,omitempty"`
+	Metadata  map[string]interface{}            `yaml:"metadata,omitempty"`
 
 	DefaultIndex  string `yaml:"default-index,omitempty"`
 	QueryTemplate string `yaml:"queryTemplate,omitempty"`
