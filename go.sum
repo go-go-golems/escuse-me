@@ -147,8 +147,8 @@ github.com/go-go-golems/clay v0.1.38 h1:z53a8CsylLkFo/vexhuZQhcEB5XARPgvCpdPSPc1
 github.com/go-go-golems/clay v0.1.38/go.mod h1:iu+s1/Ng3r6FUKXI4NN0/P/E45MlpL3qkglvKhR7u+w=
 github.com/go-go-golems/geppetto v0.4.47 h1:+JGLUZJZEzGfb+MiGcceVv6y5Ye6P3/E/8nYp4Hi4PU=
 github.com/go-go-golems/geppetto v0.4.47/go.mod h1:Nlid0zl6WqEeUdO8SY9mIxOpXQD1x+BfuG6cUBsC6d4=
-github.com/go-go-golems/glazed v0.5.44 h1:qsFKlD9mH5B5LWkx/CyltHC0eGFsZI0NDzImSusC4+E=
-github.com/go-go-golems/glazed v0.5.44/go.mod h1:9BLzfCpwtvcf+JESxhT3QBCAPt2H2Yk3NDi0FBhCwQw=
+github.com/go-go-golems/glazed v0.5.45 h1:GJNwguwECQ65qmkXUL3lN9jOGadnQcJImBVWjUn+Cs8=
+github.com/go-go-golems/glazed v0.5.45/go.mod h1:9BLzfCpwtvcf+JESxhT3QBCAPt2H2Yk3NDi0FBhCwQw=
 github.com/go-go-golems/go-emrichen v0.0.7 h1:RSJajEihqieIWEo/X63DBY5N5tDl9JuZrFtxP2zImic=
 github.com/go-go-golems/go-emrichen v0.0.7/go.mod h1:2P4dTvCe7ystMW7mR2Wu58XXw5mF/0lH8lm6APYFpYQ=
 github.com/go-go-golems/parka v0.5.24 h1:RECUutFpfZQIUz1Zs12nII72JBzgv3iAmQtEYjkcNk0=
