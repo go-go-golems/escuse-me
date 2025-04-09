@@ -92,5 +92,15 @@ func AddToRootCommand(rootCmd *cobra.Command) error {
 	}
 	indicesCommand.AddCommand(cloneIndexCmd)
 
+	indicesGetAliasCommand, err := NewIndicesGetAliasCommand()
+	if err != nil {
+		return err
+	}
+	indicesGetAliasCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(indicesGetAliasCommand)
+	if err != nil {
+		return err
+	}
+	indicesCommand.AddCommand(indicesGetAliasCmd)
+
 	return nil
 }
