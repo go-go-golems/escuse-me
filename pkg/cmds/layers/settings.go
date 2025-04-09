@@ -110,13 +110,11 @@ func (c *OpenSearchClient) ListIndices(ctx context.Context) ([]byte, error) {
 }
 
 func NewESParameterLayer(options ...layers.ParameterLayerOptions) (*EsParameterLayer, error) {
-	log.Debug().Msg("Creating new ES parameter layer")
 	ret, err := layers.NewParameterLayerFromYAML(esFlagsYaml, options...)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create ES parameter layer from YAML")
 		return nil, err
 	}
-	log.Debug().Msg("Successfully created ES parameter layer")
 	return &EsParameterLayer{ParameterLayerImpl: ret}, nil
 }
 
