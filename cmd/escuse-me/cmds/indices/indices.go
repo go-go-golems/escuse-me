@@ -132,5 +132,15 @@ func AddToRootCommand(rootCmd *cobra.Command) error {
 	}
 	indicesCommand.AddCommand(indicesUpdateAliasesCmd)
 
+	reindexCommand, err := NewReindexCommand()
+	if err != nil {
+		return err
+	}
+	reindexCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(reindexCommand)
+	if err != nil {
+		return err
+	}
+	indicesCommand.AddCommand(reindexCmd)
+
 	return nil
 }
