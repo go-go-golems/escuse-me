@@ -1,3 +1,40 @@
+---
+Title: Reindexing with Mapping Changes and Alias Swapping
+Slug: reindexing-tutorial
+Short: Tutorial on reindexing Elasticsearch data with mapping changes and zero downtime using aliases.
+Topics:
+  - elasticsearch
+  - reindexing
+  - aliases
+  - mapping
+  - zero-downtime
+Commands:
+  - indices create
+  - documents bulk-index
+  - indices dump
+  - indices create-alias
+  - indices aliases
+  - indices reindex
+  - indices update-aliases
+  - indices delete
+Flags:
+  - --index
+  - --mappings
+  - --files
+  - -o
+  - --fields
+  - --name
+  - --source-index
+  - --target-index
+  - --script
+  - --wait-for-completion
+  - --actions
+IsTopLevel: false
+IsTemplate: false
+ShowPerDefault: true
+SectionType: Tutorial
+---
+
 # Tutorial: Reindexing with Mapping Changes and Alias Swapping using escuse-me
 
 This tutorial demonstrates a common Elasticsearch workflow: changing the mapping of an existing field, which requires creating a new index and reindexing the data. We will use an alias to ensure applications querying the data experience zero downtime during the switch.
