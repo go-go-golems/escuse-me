@@ -92,5 +92,45 @@ func AddToRootCommand(rootCmd *cobra.Command) error {
 	}
 	indicesCommand.AddCommand(cloneIndexCmd)
 
+	indicesGetAliasCommand, err := NewIndicesGetAliasCommand()
+	if err != nil {
+		return err
+	}
+	indicesGetAliasCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(indicesGetAliasCommand)
+	if err != nil {
+		return err
+	}
+	indicesCommand.AddCommand(indicesGetAliasCmd)
+
+	indicesDeleteAliasCommand, err := NewIndicesDeleteAliasCommand()
+	if err != nil {
+		return err
+	}
+	indicesDeleteAliasCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(indicesDeleteAliasCommand)
+	if err != nil {
+		return err
+	}
+	indicesCommand.AddCommand(indicesDeleteAliasCmd)
+
+	indicesCreateAliasCommand, err := NewIndicesCreateAliasCommand()
+	if err != nil {
+		return err
+	}
+	indicesCreateAliasCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(indicesCreateAliasCommand)
+	if err != nil {
+		return err
+	}
+	indicesCommand.AddCommand(indicesCreateAliasCmd)
+
+	indicesUpdateAliasesCommand, err := NewIndicesUpdateAliasesCommand()
+	if err != nil {
+		return err
+	}
+	indicesUpdateAliasesCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(indicesUpdateAliasesCommand)
+	if err != nil {
+		return err
+	}
+	indicesCommand.AddCommand(indicesUpdateAliasesCmd)
+
 	return nil
 }
