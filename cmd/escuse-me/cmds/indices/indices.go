@@ -142,5 +142,14 @@ func AddToRootCommand(rootCmd *cobra.Command) error {
 	}
 	indicesCommand.AddCommand(reindexCmd)
 
+	dumpCommand, err := NewDumpCommand()
+	if err != nil {
+		return err
+	}
+	dumpCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(dumpCommand)
+	if err != nil {
+		return err
+	}
+	indicesCommand.AddCommand(dumpCmd)
 	return nil
 }

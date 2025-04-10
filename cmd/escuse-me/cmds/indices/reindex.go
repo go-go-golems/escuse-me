@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"time"
 
@@ -20,6 +19,7 @@ import (
 	"github.com/go-go-golems/glazed/pkg/settings"
 	"github.com/go-go-golems/glazed/pkg/types"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 )
 
 type ReindexSettings struct {
@@ -198,7 +198,7 @@ func (c *ReindexCommand) RunIntoGlazeProcessor(
 
 	// Handle target index creation
 	if s.CreateTarget {
-		log.Printf("Checking if target index '%s' exists...\n", s.TargetIndex)
+		log.Debug().Str("index", s.TargetIndex).Msg("Checking if target index exists")
 		existsRes, err := es.Indices.Exists([]string{s.TargetIndex}, es.Indices.Exists.WithContext(ctx))
 		if err != nil {
 			return errors.Wrapf(err, "failed to check if target index '%s' exists", s.TargetIndex)
@@ -206,7 +206,7 @@ func (c *ReindexCommand) RunIntoGlazeProcessor(
 		_ = existsRes.Body.Close() // Ignore error, status code is enough
 
 		if existsRes.StatusCode == http.StatusNotFound {
-			log.Printf("Target index '%s' does not exist. Creating...\n", s.TargetIndex)
+			log.Debug().Str("index", s.TargetIndex).Msg("Target index does not exist. Creating...")
 			if s.TargetSettings == nil && s.TargetMappings == nil {
 				return errors.New("--create-target requires --target-settings and/or --target-mappings to be provided")
 			}
@@ -240,17 +240,17 @@ func (c *ReindexCommand) RunIntoGlazeProcessor(
 				bodyBytes, _ := io.ReadAll(createRes.Body)
 				return errors.Errorf("failed to create target index '%s': %s", s.TargetIndex, string(bodyBytes))
 			}
-			log.Printf("Target index '%s' created successfully.\n", s.TargetIndex)
+			log.Debug().Str("index", s.TargetIndex).Msg("Target index created successfully.")
 		} else if existsRes.IsError() {
 			// Handle other errors during exists check
 			return errors.Errorf("error checking existence of target index '%s': status %d", s.TargetIndex, existsRes.StatusCode)
 		} else {
-			log.Printf("Target index '%s' already exists. Skipping creation.\n", s.TargetIndex)
+			log.Debug().Str("index", s.TargetIndex).Msg("Target index already exists. Skipping creation.")
 		}
 	}
 
 	// Prepare _reindex request body
-	log.Println("Preparing reindex request body...")
+	log.Debug().Msg("Preparing reindex request body")
 	reindexBody := map[string]interface{}{
 		"source": map[string]interface{}{
 			"index": s.SourceIndex,
@@ -292,8 +292,11 @@ func (c *ReindexCommand) RunIntoGlazeProcessor(
 	}
 
 	// Execute _reindex API call
-	log.Printf("Starting reindex from '%s' to '%s' (WaitForCompletion: %t)...\n",
-		s.SourceIndex, s.TargetIndex, s.WaitForCompletion)
+	log.Debug().
+		Str("sourceIndex", s.SourceIndex).
+		Str("targetIndex", s.TargetIndex).
+		Bool("waitForCompletion", s.WaitForCompletion).
+		Msg("Starting reindex")
 
 	res, err := es.Reindex(bytes.NewReader(bodyBytes), reindexOptions...)
 	if err != nil {
@@ -314,7 +317,7 @@ func (c *ReindexCommand) RunIntoGlazeProcessor(
 
 	// Process Response
 	if s.WaitForCompletion {
-		log.Println("Reindex running synchronously, processing final response...")
+		log.Debug().Msg("Reindex running synchronously, processing final response")
 		bodyBytes, err := io.ReadAll(res.Body)
 		if err != nil {
 			return errors.Wrap(err, "failed to read synchronous reindex response body")
@@ -326,7 +329,7 @@ func (c *ReindexCommand) RunIntoGlazeProcessor(
 
 		// Check for failures in the synchronous response
 		if failures, ok := finalTaskStatus["failures"].([]interface{}); ok && len(failures) > 0 {
-			log.Printf("Reindex completed with %d failures.\n", len(failures))
+			log.Warn().Int("failureCount", len(failures)).Msg("Reindex completed with failures")
 			// Output the full status including failures
 			row := types.NewRowFromMap(finalTaskStatus)
 			if err := gp.AddRow(ctx, row); err != nil {
@@ -337,7 +340,7 @@ func (c *ReindexCommand) RunIntoGlazeProcessor(
 			return errors.Errorf("reindex completed with failures: %s", string(failureJSON))
 		}
 
-		log.Println("Synchronous reindex completed successfully.")
+		log.Debug().Msg("Synchronous reindex completed successfully.")
 		row := types.NewRowFromMap(finalTaskStatus)
 		if err := gp.AddRow(ctx, row); err != nil {
 			return errors.Wrap(err, "failed to output final status row")
@@ -345,7 +348,7 @@ func (c *ReindexCommand) RunIntoGlazeProcessor(
 		reindexSuccessful = true
 
 	} else {
-		log.Println("Reindex running asynchronously, getting task ID...")
+		log.Debug().Msg("Reindex running asynchronously, getting task ID")
 		var initialResponse struct {
 			Task string `json:"task"`
 		}
@@ -356,26 +359,29 @@ func (c *ReindexCommand) RunIntoGlazeProcessor(
 		if taskID == "" {
 			return errors.New("failed to get task ID from async reindex response")
 		}
-		log.Printf("Reindex task started: %s. Monitoring progress (interval: %s)...\n", taskID, s.PollIntervalDuration)
+		log.Debug().Str("taskID", taskID).Dur("pollInterval", s.PollIntervalDuration).Msg("Reindex task started. Monitoring progress.")
 
 		// Monitor the task
 		finalTaskStatus, err = monitorReindexTask(ctx, es.Client, taskID, s.PollIntervalDuration, gp)
 		if err != nil {
-			log.Printf("Reindex task %s monitoring failed: %v\n", taskID, err)
+			log.Error().Err(err).Str("taskID", taskID).Msg("Reindex task monitoring failed")
 			// Error details should have been added to gp by monitorReindexTask
 			return errors.Wrapf(err, "reindex task %s failed", taskID)
 		}
-		log.Printf("Reindex task %s completed successfully.\n", taskID)
+		log.Debug().Str("taskID", taskID).Msg("Reindex task completed successfully.")
 		reindexSuccessful = true
 	}
 
 	// Handle Alias Swapping
 	if reindexSuccessful && s.SwapAlias != "" {
-		log.Printf("Reindex successful. Swapping alias '%s' from '%s' to '%s'...\n",
-			s.SwapAlias, s.SourceIndex, s.TargetIndex)
+		log.Debug().
+			Str("alias", s.SwapAlias).
+			Str("sourceIndex", s.SourceIndex).
+			Str("targetIndex", s.TargetIndex).
+			Msg("Reindex successful. Swapping alias.")
 		err = swapAliasAtomically(ctx, es.Client, s.SourceIndex, s.TargetIndex, s.SwapAlias)
 		if err != nil {
-			log.Printf("WARN: Failed to swap alias '%s': %v\n", s.SwapAlias, err)
+			log.Warn().Err(err).Str("alias", s.SwapAlias).Msg("Failed to swap alias")
 			// Don't return error here, reindex itself was successful, but log clearly.
 			// Maybe add a row to glazed output?
 			aliasErrRow := types.NewRow(
@@ -386,7 +392,7 @@ func (c *ReindexCommand) RunIntoGlazeProcessor(
 			)
 			_ = gp.AddRow(ctx, aliasErrRow) // Ignore error on this warning row
 		} else {
-			log.Printf("Alias '%s' swapped successfully.\n", s.SwapAlias)
+			log.Debug().Str("alias", s.SwapAlias).Msg("Alias swapped successfully.")
 			aliasOkRow := types.NewRow(
 				types.MRP("operation", "alias_swap"),
 				types.MRP("alias", s.SwapAlias),
@@ -396,7 +402,7 @@ func (c *ReindexCommand) RunIntoGlazeProcessor(
 		}
 	}
 
-	log.Println("Reindex command finished.")
+	log.Debug().Msg("Reindex command finished.")
 	return nil
 }
 
@@ -416,31 +422,31 @@ func monitorReindexTask(
 	for {
 		select {
 		case <-ctx.Done():
-			log.Printf("Context cancelled, stopping task monitoring for %s\n", taskID)
+			log.Debug().Str("taskID", taskID).Msg("Context cancelled, stopping task monitoring")
 			return nil, ctx.Err()
 		case <-ticker.C:
-			log.Printf("Polling task status for %s...\n", taskID)
+			log.Debug().Str("taskID", taskID).Msg("Polling task status")
 			res, err := es.Tasks.Get(taskID, es.Tasks.Get.WithContext(ctx))
 			if err != nil {
 				// Log transient errors but continue polling
-				log.Printf("WARN: Failed API call to get task status for %s: %v. Retrying...\n", taskID, err)
+				log.Warn().Err(err).Str("taskID", taskID).Msg("Failed API call to get task status. Retrying...")
 				continue
 			}
 
 			bodyBytes, readErr := io.ReadAll(res.Body)
 			closeErr := res.Body.Close()
 			if readErr != nil {
-				log.Printf("WARN: Failed to read task status response body for %s: %v. Retrying...\n", taskID, readErr)
+				log.Warn().Err(readErr).Str("taskID", taskID).Msg("Failed to read task status response body. Retrying...")
 				continue
 			}
 			if closeErr != nil {
-				log.Printf("WARN: Failed to close task status response body for %s: %v\n", taskID, closeErr)
+				log.Warn().Err(closeErr).Str("taskID", taskID).Msg("Failed to close task status response body")
 				// Continue processing the body we already read
 			}
 
 			if res.IsError() {
 				// If the task API itself returns an error (e.g., task not found after a while?)
-				log.Printf("ERROR: Task API returned error for task %s: %s\n", taskID, string(bodyBytes))
+				log.Error().Str("taskID", taskID).Int("statusCode", res.StatusCode).Str("body", string(bodyBytes)).Msg("Task API returned error")
 				errData := map[string]interface{}{
 					"task_id":     taskID,
 					"status_code": res.StatusCode,
@@ -481,18 +487,18 @@ func monitorReindexTask(
 			var fullResponseMap map[string]interface{} // For returning the final state
 
 			if err := json.Unmarshal(bodyBytes, &taskResponse); err != nil {
-				log.Printf("WARN: Failed to decode task response for %s: %v. Body: %s. Retrying...\n", taskID, err, string(bodyBytes))
+				log.Warn().Err(err).Str("taskID", taskID).Str("body", string(bodyBytes)).Msg("Failed to decode task response. Retrying...")
 				continue // Try again next poll
 			}
 			if err := json.Unmarshal(bodyBytes, &fullResponseMap); err != nil {
 				// Less critical, just log if full map fails
-				log.Printf("WARN: Failed to unmarshal full task response map for %s: %v\n", taskID, err)
+				log.Warn().Err(err).Str("taskID", taskID).Msg("Failed to unmarshal full task response map")
 			}
 
 			// Check if the task itself reported an error
 			if taskResponse.Error != nil {
 				errorMsg := fmt.Sprintf("reindex task %s failed: %s - %s", taskID, taskResponse.Error.Type, taskResponse.Error.Reason)
-				log.Println("ERROR:", errorMsg)
+				log.Error().Str("taskID", taskID).Str("errorType", taskResponse.Error.Type).Str("reason", taskResponse.Error.Reason).Msg("Reindex task failed")
 				// Add final error status row
 				errData := map[string]interface{}{
 					"task_id":      taskID,
@@ -528,12 +534,12 @@ func monitorReindexTask(
 			}
 			if err := gp.AddRow(ctx, types.NewRowFromMap(progressData)); err != nil {
 				// Log error but continue monitoring if AddRow fails
-				log.Printf("WARN: Failed to add progress row to Glaze processor: %v\n", err)
+				log.Warn().Err(err).Msg("Failed to add progress row to Glaze processor")
 			}
 
 			// Check if completed successfully
 			if taskResponse.Completed {
-				log.Printf("Task %s completed successfully based on poll.\n", taskID)
+				log.Debug().Str("taskID", taskID).Msg("Task completed successfully based on poll.")
 				// Add final success status row (optional, as progress row already shows completed=true)
 				successData := map[string]interface{}{
 					"task_id":     taskID,

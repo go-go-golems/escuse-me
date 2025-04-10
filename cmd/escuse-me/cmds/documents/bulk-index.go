@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	es_layers "github.com/go-go-golems/escuse-me/pkg/cmds/layers"
 	"github.com/go-go-golems/glazed/pkg/cmds"
@@ -14,7 +16,6 @@ import (
 	"github.com/go-go-golems/glazed/pkg/settings"
 	"github.com/go-go-golems/glazed/pkg/types"
 	"github.com/pkg/errors"
-	"io"
 )
 
 func interleaveBulkIndexObjects(objects []map[string]interface{}, index string) (io.Reader, error) {
@@ -108,8 +109,6 @@ func NewBulkIndexCommand() (*BulkIndexCommand, error) {
 					parameters.ParameterTypeBool,
 					parameters.WithHelp("If true, the request's actions must target an index alias"),
 				),
-			),
-			cmds.WithArguments(
 				parameters.NewParameterDefinition(
 					"files",
 					parameters.ParameterTypeObjectListFromFiles,

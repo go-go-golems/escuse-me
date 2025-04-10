@@ -1,0 +1,6 @@
+{
+  "actions": [
+    { "remove": { "index": "my-data-v1", "alias": "my-data-alias" } },
+    { "add": { "index": "my-data-v2", "alias": "my-data-alias" } }
+  ]
+} 

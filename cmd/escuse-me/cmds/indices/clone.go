@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"log"
 	"strings"
 
 	es_layers "github.com/go-go-golems/escuse-me/pkg/cmds/layers"
@@ -17,6 +16,7 @@ import (
 	"github.com/go-go-golems/glazed/pkg/settings"
 	"github.com/go-go-golems/glazed/pkg/types"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 )
 
 type CloneIndexCommand struct {
@@ -145,7 +145,7 @@ func (c *CloneIndexCommand) RunIntoGlazeProcessor(
 			es.Indices.PutSettings.WithContext(ctx),
 		)
 		if revertErr != nil {
-			log.Printf("WARN: failed to remove write block from index %s: %v", s.Index, revertErr)
+			log.Warn().Err(revertErr).Str("index", s.Index).Msg("Failed to remove write block from index")
 			return
 		}
 		defer func(Body io.ReadCloser) {
@@ -154,7 +154,7 @@ func (c *CloneIndexCommand) RunIntoGlazeProcessor(
 
 		if revertRes.IsError() {
 			bodyBytes, _ := io.ReadAll(revertRes.Body)
-			log.Printf("WARN: failed to remove write block from index %s: %s", s.Index, string(bodyBytes))
+			log.Warn().Str("index", s.Index).Str("response", string(bodyBytes)).Msg("Failed to remove write block from index")
 		}
 	}()
 
