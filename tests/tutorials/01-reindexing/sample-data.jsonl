@@ -1,0 +1,2 @@
+{ "id": 1, "user": "alice", "timestamp": "2023-10-26T10:00:00Z", "metadata": {"source": "web", "session": "xyz"} }
+{ "id": 2, "user": "bob", "timestamp": "2023-10-26T10:05:00Z", "metadata": {"source": "api", "version": 2} } 

@@ -1,0 +1,4 @@
+{
+  "source": "ctx._source.metadata = ctx._source.metadata.toString()",
+  "lang": "painless"
+} 

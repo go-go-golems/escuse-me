@@ -1,0 +1,11 @@
+{
+  "properties": {
+    "id": { "type": "integer" },
+    "user": { "type": "keyword" },
+    "timestamp": { "type": "date" },
+    "metadata": {
+      "type": "text",
+      "analyzer": "standard"
+    }
+  }
+} 

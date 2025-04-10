@@ -6,7 +6,7 @@ require (
 	github.com/elastic/go-elasticsearch/v8 v8.17.0
 	github.com/go-go-golems/clay v0.1.38
 	github.com/go-go-golems/geppetto v0.4.47
-	github.com/go-go-golems/glazed v0.5.46
+	github.com/go-go-golems/glazed v0.5.47
 	github.com/go-go-golems/go-emrichen v0.0.7
 	github.com/go-go-golems/parka v0.5.25
 	github.com/opensearch-project/opensearch-go/v4 v4.4.0

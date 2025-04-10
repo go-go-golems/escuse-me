@@ -48,7 +48,7 @@ func NewIndicesUpdateAliasesCommand() (*IndicesUpdateAliasesCommand, error) {
 			cmds.WithLong(`Allows performing one or more alias actions (add, remove) in a single atomic operation. Define actions in a JSON/YAML body.`),
 			cmds.WithFlags(
 				parameters.NewParameterDefinition(
-					"body",
+					"actions",
 					parameters.ParameterTypeObjectFromFile, // Body containing actions is required
 					parameters.WithHelp("JSON/YAML object defining the 'actions' array (add/remove operations)"),
 					parameters.WithRequired(true),
@@ -72,8 +72,8 @@ func NewIndicesUpdateAliasesCommand() (*IndicesUpdateAliasesCommand, error) {
 }
 
 type IndicesUpdateAliasesSettings struct {
-	// Body must contain the 'actions' for the API call
-	Body          map[string]interface{} `glazed.parameter:"body"`
+	// Actions must contain the 'actions' for the API call
+	Actions       map[string]interface{} `glazed.parameter:"actions"`
 	MasterTimeout time.Duration          `glazed.parameter:"master_timeout"`
 	Timeout       time.Duration          `glazed.parameter:"timeout"`
 }
@@ -94,13 +94,13 @@ func (c *IndicesUpdateAliasesCommand) Run(
 	}
 
 	log.Debug().
-		Interface("body", s.Body).
+		Interface("body", s.Actions).
 		Dur("master_timeout", s.MasterTimeout).
 		Dur("timeout", s.Timeout).
 		Msg("Updating aliases")
 
 	// Marshal the body which contains the actions
-	bodyBytes, err := json.Marshal(s.Body)
+	bodyBytes, err := json.Marshal(s.Actions)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal request body")
 	}
