@@ -67,6 +67,12 @@ func NewIndicesStatsCommand() (*IndicesStatsCommand, error) {
 					parameters.WithDefault(false),
 				),
 				parameters.NewParameterDefinition(
+					"meta",
+					parameters.ParameterTypeBool,
+					parameters.WithHelp("Include the index's _meta field (only for summary/detailed levels)"),
+					parameters.WithDefault(false),
+				),
+				parameters.NewParameterDefinition(
 					"metrics",
 					parameters.ParameterTypeChoiceList,
 					parameters.WithHelp("Specific metric groups to include (overrides/augments level). Available metrics: docs, indexing, search, segments, memory (fielddata/query_cache/request_cache memory), cache (query_cache/request_cache hits/misses), operations (refresh/flush/merges), translog"),
@@ -96,6 +102,7 @@ type IndicesStatsSettings struct {
 	Full  bool   `glazed.parameter:"full"` // Kept for backward compatibility alias
 
 	Metrics []string `glazed.parameter:"metrics"`
+	Meta    bool     `glazed.parameter:"meta"`
 }
 
 func (i *IndicesStatsCommand) RunIntoGlazeProcessor(
@@ -119,6 +126,60 @@ func (i *IndicesStatsCommand) RunIntoGlazeProcessor(
 	if s.Full {
 		effectiveLevel = "full"
 	}
+
+	// --- Fetch Mappings if --meta is requested (and not level=full) ---
+	metaDataMap := map[string]string{} // Map index name -> _meta JSON string
+	if s.Meta && effectiveLevel != "full" {
+		mappingRes, err := es.Indices.GetMapping(
+			es.Indices.GetMapping.WithIndex(s.Index),
+			es.Indices.GetMapping.WithContext(ctx),
+		)
+		if err != nil {
+			return errors.Wrap(err, "failed to get index mappings for _meta")
+		}
+		defer func() { _ = mappingRes.Body.Close() }()
+
+		if !mappingRes.IsError() {
+			mappingBodyBytes, err := io.ReadAll(mappingRes.Body)
+			if err != nil {
+				return errors.Wrap(err, "failed to read mapping response body")
+			}
+
+			var mappingResponse map[string]interface{}
+			err = json.Unmarshal(mappingBodyBytes, &mappingResponse)
+			if err != nil {
+				return errors.Wrap(err, "failed to unmarshal mapping response body")
+			}
+
+			// Extract _meta for each index
+			for indexName, indexMappingData_ := range mappingResponse {
+				indexMappingData, ok := indexMappingData_.(map[string]interface{})
+				if !ok {
+					continue
+				} // Skip if not a map
+				mappings, ok := maps.Get[map[string]interface{}](indexMappingData, "mappings")
+				if !ok {
+					continue
+				} // Skip if no mappings field
+				metaInterface, ok := maps.Get[map[string]interface{}](mappings, "_meta")
+				if ok && metaInterface != nil {
+					metaBytes, err := json.Marshal(metaInterface)
+					if err == nil {
+						metaDataMap[indexName] = string(metaBytes)
+					} else {
+						// Log or handle marshalling error if necessary
+						fmt.Printf("Warning: could not marshal _meta for index %s: %v\n", indexName, err)
+					}
+				}
+			}
+		} else {
+			// Handle mapping API error - perhaps log it or return an error?
+			// For now, just print a warning and continue without meta.
+			bodyBytes, _ := io.ReadAll(mappingRes.Body)
+			fmt.Printf("Warning: failed to get mappings (status: %s): %s\n", mappingRes.Status(), string(bodyBytes))
+		}
+	}
+	// --- End Fetch Mappings ---
 
 	// Determine metrics to request from ES
 	metricsSet := map[string]bool{}
@@ -311,6 +372,14 @@ func (i *IndicesStatsCommand) RunIntoGlazeProcessor(
 				if showMetrics["translog"] {
 					addIntMetric("translog_ops_total", "total", "translog", "operations")
 					addIntMetric("translog_size_bytes", "total", "translog", "size_in_bytes")
+				}
+
+				// Add _meta if requested and available
+				if metaJSON, ok := metaDataMap[indexName]; ok {
+					row.Set("meta", metaJSON)
+				} else if s.Meta {
+					// Ensure the column exists even if empty when --meta is requested
+					row.Set("meta", "")
 				}
 
 				if err := gp.AddRow(ctx, row); err != nil {
