@@ -4,11 +4,11 @@ go 1.24.2
 
 require (
 	github.com/elastic/go-elasticsearch/v8 v8.17.0
-	github.com/go-go-golems/clay v0.1.38
-	github.com/go-go-golems/geppetto v0.4.47
-	github.com/go-go-golems/glazed v0.5.47
+	github.com/go-go-golems/clay v0.1.39
+	github.com/go-go-golems/geppetto v0.4.49
+	github.com/go-go-golems/glazed v0.5.48
 	github.com/go-go-golems/go-emrichen v0.0.7
-	github.com/go-go-golems/parka v0.5.25
+	github.com/go-go-golems/parka v0.5.26
 	github.com/opensearch-project/opensearch-go/v4 v4.4.0
 	github.com/pkg/errors v0.9.1
 	github.com/pkg/profile v1.7.0
