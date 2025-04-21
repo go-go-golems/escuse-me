@@ -3,7 +3,7 @@ module github.com/go-go-golems/escuse-me
 go 1.24.2
 
 require (
-	github.com/elastic/go-elasticsearch/v8 v8.17.0
+	github.com/elastic/go-elasticsearch/v8 v8.18.0
 	github.com/go-go-golems/clay v0.1.39
 	github.com/go-go-golems/geppetto v0.4.49
 	github.com/go-go-golems/glazed v0.5.48
@@ -77,7 +77,7 @@ require (
 	github.com/charmbracelet/x/cellbuf v0.0.13-0.20250311204145-2c3ea96c31dd // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
-	github.com/elastic/elastic-transport-go/v8 v8.6.0 // indirect
+	github.com/elastic/elastic-transport-go/v8 v8.7.0 // indirect
 	github.com/felixge/fgprof v0.9.3 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
