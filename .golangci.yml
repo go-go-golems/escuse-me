@@ -21,6 +21,12 @@ linters:
           - staticcheck
         text: 'SA1019: cli.CreateProcessorLegacy'
 
+  settings:
+    errcheck:
+      exclude-functions:
+        - (io.Closer).Close
+        - fmt.Fprintf
+
 formatters:
   enable:
     - gofmt

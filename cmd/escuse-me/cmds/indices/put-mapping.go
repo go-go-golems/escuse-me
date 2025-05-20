@@ -19,13 +19,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-type UpdateMappingCommand struct {
+type PutMappingCommand struct {
 	*cmds.CommandDescription
 }
 
-var _ cmds.GlazeCommand = &UpdateMappingCommand{}
+var _ cmds.GlazeCommand = &PutMappingCommand{}
 
-func NewUpdateMappingCommand() (*UpdateMappingCommand, error) {
+func NewPutMappingCommand() (*PutMappingCommand, error) {
 	glazedParameterLayer, err := settings.NewGlazedParameterLayers()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create Glazed parameter layer")
@@ -35,10 +35,10 @@ func NewUpdateMappingCommand() (*UpdateMappingCommand, error) {
 		return nil, errors.Wrap(err, "could not create ES parameter layer")
 	}
 
-	return &UpdateMappingCommand{
+	return &PutMappingCommand{
 		CommandDescription: cmds.NewCommandDescription(
-			"update-mapping",
-			cmds.WithShort("Updates the mapping of an existing index"),
+			"put-mapping",
+			cmds.WithShort("Sets the mapping of an existing index (direct ES API call)"),
 			cmds.WithFlags(
 				parameters.NewParameterDefinition(
 					"index",
@@ -81,7 +81,7 @@ func NewUpdateMappingCommand() (*UpdateMappingCommand, error) {
 	}, nil
 }
 
-type UpdateMappingSettings struct {
+type PutMappingSettings struct {
 	Index             string                 `glazed.parameter:"index"`
 	Mappings          map[string]interface{} `glazed.parameter:"mappings"`
 	WriteIndexOnly    bool                   `glazed.parameter:"write_index_only"`
@@ -90,12 +90,12 @@ type UpdateMappingSettings struct {
 	IgnoreUnavailable bool                   `glazed.parameter:"ignore_unavailable"`
 }
 
-func (c *UpdateMappingCommand) RunIntoGlazeProcessor(
+func (c *PutMappingCommand) RunIntoGlazeProcessor(
 	ctx context.Context,
 	parsedLayers *layers.ParsedLayers,
 	gp middlewares.Processor,
 ) error {
-	s := &UpdateMappingSettings{}
+	s := &PutMappingSettings{}
 	if err := parsedLayers.InitializeStruct(layers.DefaultSlug, s); err != nil {
 		return err
 	}
@@ -105,9 +105,9 @@ func (c *UpdateMappingCommand) RunIntoGlazeProcessor(
 		return err
 	}
 
-	updateMappingRequest := s.Mappings
+	putMappingRequest := s.Mappings
 
-	requestBody, err := json.Marshal(updateMappingRequest)
+	requestBody, err := json.Marshal(putMappingRequest)
 	if err != nil {
 		return err
 	}
