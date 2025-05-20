@@ -62,7 +62,7 @@ func AddToRootCommand(rootCmd *cobra.Command) error {
 	}
 	indicesCommand.AddCommand(deleteIndexCmd)
 
-	updateMappingCommand, err := NewUpdateMappingCommand()
+	updateMappingCommand, err := NewPutMappingCommand()
 	if err != nil {
 		return err
 	}
@@ -151,5 +151,16 @@ func AddToRootCommand(rootCmd *cobra.Command) error {
 		return err
 	}
 	indicesCommand.AddCommand(dumpCmd)
+
+	updateMappingsCommand, err := NewUpdateMappingsCommand()
+	if err != nil {
+		return err
+	}
+	updateMappingsCmd, err := es_cmds.BuildCobraCommandWithEscuseMeMiddlewares(updateMappingsCommand)
+	if err != nil {
+		return err
+	}
+	indicesCommand.AddCommand(updateMappingsCmd)
+
 	return nil
 }

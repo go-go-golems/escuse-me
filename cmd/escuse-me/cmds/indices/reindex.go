@@ -68,6 +68,47 @@ Features:
 - Provides streaming progress updates (using glazed output).
 - Optionally swaps an alias atomically upon successful completion.
 - Control batch size, parallelization (slices), and throttling.
+
+Examples:
+
+# Basic reindex from one index to another
+escuse-me indices reindex --source-index my-old-index --target-index my-new-index
+
+# Reindex with a filter query (from file)
+escuse-me indices reindex --source-index logs-2023 --target-index logs-2023-filtered --query query.json
+
+# Reindex with a transformation script (from file)
+escuse-me indices reindex --source-index src --target-index dst --script script.json
+
+# Reindex using an ingest pipeline
+escuse-me indices reindex --source-index src --target-index dst --pipeline my-pipeline
+
+# Create the target index with custom settings and mappings
+escuse-me indices reindex --source-index src --target-index dst --create-target --target-settings settings.json --target-mappings mappings.json
+
+# Throttle reindexing to 1000 docs/sec, use 4 parallel slices
+escuse-me indices reindex --source-index src --target-index dst --requests-per-second 1000 --slices 4
+
+# Wait for completion and print final stats
+escuse-me indices reindex --source-index src --target-index dst --wait-for-completion
+
+# Atomically swap an alias from the old to the new index after reindexing
+escuse-me indices reindex --source-index my-old-index --target-index my-new-index --swap-alias my-alias
+
+# Full workflow: create target, reindex, and swap alias
+escuse-me indices reindex \
+  --source-index my-old-index \
+  --target-index my-new-index \
+  --create-target \
+  --target-settings settings.json \
+  --target-mappings mappings.json \
+  --swap-alias my-alias
+
+# Reindex all indices matching a pattern, using wildcards
+escuse-me indices reindex --source-index 'logs-*' --target-index logs-archive
+
+# Use a custom poll interval and timeout
+escuse-me indices reindex --source-index src --target-index dst --poll-interval 5s --timeout 2m
 `),
 			cmds.WithFlags(
 				parameters.NewParameterDefinition(

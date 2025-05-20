@@ -1,3 +1,14 @@
+## Add Update-Mappings Command with Zero-Downtime Support
+
+Added a new `update-mappings` command that provides zero-downtime mapping updates for Elasticsearch indices:
+
+- Support for in-place mapping updates when possible
+- Zero-downtime mode using reindex and aliases
+- Alias management for transparent index updates
+- Interactive and non-interactive modes
+- Customizable batch size and timeout settings
+- Option to delete old indices after successful updates
+
 ## Enhanced Error Handling with Raw Results
 
 Added support for printing raw error responses when the --raw-results flag is enabled. This helps with debugging by showing the complete error response from Elasticsearch.
