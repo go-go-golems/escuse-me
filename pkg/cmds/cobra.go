@@ -16,9 +16,9 @@ import (
 
 func BuildCobraCommandWithEscuseMeMiddlewares(
 	cmd cmds.Command,
-	options ...cli.CobraParserOption,
+	options ...cli.CobraOption,
 ) (*cobra.Command, error) {
-	options_ := append([]cli.CobraParserOption{
+	options_ := append([]cli.CobraOption{
 		cli.WithCobraMiddlewaresFunc(GetCobraCommandEscuseMeMiddlewares),
 		cli.WithCobraShortHelpLayers(layers2.DefaultSlug, layers.EsConnectionSlug, layers.ESHelpersSlug, embeddings_config.EmbeddingsSlug, embeddings_config.EmbeddingsApiKeySlug),
 	}, options...)
