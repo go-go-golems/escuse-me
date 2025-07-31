@@ -25,6 +25,7 @@ import (
 	"github.com/go-go-golems/glazed/pkg/cmds/loaders"
 	"github.com/go-go-golems/glazed/pkg/cmds/logging"
 	"github.com/go-go-golems/glazed/pkg/help"
+	help_cmd "github.com/go-go-golems/glazed/pkg/help/cmd"
 	"github.com/go-go-golems/glazed/pkg/types"
 	parka_doc "github.com/go-go-golems/parka/pkg/doc"
 	"github.com/pkg/errors"
@@ -155,7 +156,7 @@ func initRootCmd() (*help.HelpSystem, error) {
 	err := doc.AddDocToHelpSystem(helpSystem)
 	cobra.CheckErr(err)
 
-	helpSystem.SetupCobraRootCommand(rootCmd)
+	help_cmd.SetupCobraRootCommand(helpSystem, rootCmd)
 
 	err = parka_doc.AddDocToHelpSystem(helpSystem)
 	cobra.CheckErr(err)
