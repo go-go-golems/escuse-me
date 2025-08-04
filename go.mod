@@ -3,7 +3,7 @@ module github.com/go-go-golems/escuse-me
 go 1.24.2
 
 require (
-	github.com/elastic/go-elasticsearch/v8 v8.18.0
+	github.com/elastic/go-elasticsearch/v8 v8.19.0
 	github.com/go-go-golems/clay v0.1.41
 	github.com/go-go-golems/geppetto v0.4.54
 	github.com/go-go-golems/glazed v0.6.9
