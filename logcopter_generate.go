@@ -1,0 +1,3 @@
+package escuse_me
+
+//go:generate go tool logcopter-gen -include-main -var zlog -area-prefix go-go-golems.escuse-me -strip-prefix github.com/go-go-golems/escuse-me ./cmd/... ./pkg/...
