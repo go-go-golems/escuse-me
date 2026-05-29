@@ -1,6 +1,6 @@
 module github.com/go-go-golems/escuse-me
 
-go 1.25.0
+go 1.26.3
 
 require (
 	github.com/elastic/go-elasticsearch/v8 v8.18.0
