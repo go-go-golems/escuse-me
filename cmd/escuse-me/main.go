@@ -1,3 +1,4 @@
+//glazedclilint:file-ignore legacy root command uses a raw persistent profiling flag; migrate to Glazed fields in a follow-up
 package main
 
 import (

@@ -315,15 +315,15 @@ func (s *EsClientSettings) GetSummary(verbose bool) string {
 	// Always show core connection settings
 	summary.WriteString("Elasticsearch Settings:\n")
 	if len(s.Addresses) > 0 {
-		summary.WriteString(fmt.Sprintf("  - Addresses: %v\n", s.Addresses))
+		fmt.Fprintf(&summary, "  - Addresses: %v\n", s.Addresses)
 	}
 	if s.CloudId != "" {
-		summary.WriteString(fmt.Sprintf("  - Cloud ID: %s\n", s.CloudId))
+		fmt.Fprintf(&summary, "  - Cloud ID: %s\n", s.CloudId)
 	}
 
 	// Show authentication info (mask sensitive data)
 	if s.Username != "" {
-		summary.WriteString(fmt.Sprintf("  - Username: %s\n", s.Username))
+		fmt.Fprintf(&summary, "  - Username: %s\n", s.Username)
 	}
 	if s.Password != "" {
 		summary.WriteString("  - Password: ********\n")
@@ -334,7 +334,7 @@ func (s *EsClientSettings) GetSummary(verbose bool) string {
 		if len(s.ApiKey) > 8 {
 			maskedKey = s.ApiKey[:4] + "..." + s.ApiKey[len(s.ApiKey)-4:]
 		}
-		summary.WriteString(fmt.Sprintf("  - API Key: %s\n", maskedKey))
+		fmt.Fprintf(&summary, "  - API Key: %s\n", maskedKey)
 	}
 	if s.ServiceToken != "" {
 		// Show only first 4 and last 4 characters of service token
@@ -342,7 +342,7 @@ func (s *EsClientSettings) GetSummary(verbose bool) string {
 		if len(s.ServiceToken) > 8 {
 			maskedToken = s.ServiceToken[:4] + "..." + s.ServiceToken[len(s.ServiceToken)-4:]
 		}
-		summary.WriteString(fmt.Sprintf("  - Service Token: %s\n", maskedToken))
+		fmt.Fprintf(&summary, "  - Service Token: %s\n", maskedToken)
 	}
 
 	// Show security settings
@@ -350,7 +350,7 @@ func (s *EsClientSettings) GetSummary(verbose bool) string {
 		summary.WriteString("  - TLS Verification: Disabled\n")
 	}
 	if s.CertificateFingerprint != "" {
-		summary.WriteString(fmt.Sprintf("  - Certificate Fingerprint: %s\n", s.CertificateFingerprint))
+		fmt.Fprintf(&summary, "  - Certificate Fingerprint: %s\n", s.CertificateFingerprint)
 	}
 	if s.CACert != nil {
 		summary.WriteString("  - CA Certificate: Provided\n")
@@ -360,30 +360,30 @@ func (s *EsClientSettings) GetSummary(verbose bool) string {
 		// Show retry settings
 		summary.WriteString("\nRetry Settings:\n")
 		if len(s.RetryOnStatus) > 0 {
-			summary.WriteString(fmt.Sprintf("  - Retry on Status: %v\n", s.RetryOnStatus))
+			fmt.Fprintf(&summary, "  - Retry on Status: %v\n", s.RetryOnStatus)
 		}
-		summary.WriteString(fmt.Sprintf("  - Retry Disabled: %v\n", s.DisableRetry))
+		fmt.Fprintf(&summary, "  - Retry Disabled: %v\n", s.DisableRetry)
 		if s.MaxRetries > 0 {
-			summary.WriteString(fmt.Sprintf("  - Max Retries: %d\n", s.MaxRetries))
+			fmt.Fprintf(&summary, "  - Max Retries: %d\n", s.MaxRetries)
 		}
 		if s.RetryBackoff != nil {
-			summary.WriteString(fmt.Sprintf("  - Retry Backoff: %d seconds\n", *s.RetryBackoff))
+			fmt.Fprintf(&summary, "  - Retry Backoff: %d seconds\n", *s.RetryBackoff)
 		}
 
 		// Show discovery settings
 		summary.WriteString("\nDiscovery Settings:\n")
-		summary.WriteString(fmt.Sprintf("  - Discover Nodes on Start: %v\n", s.DiscoverNodesOnStart))
+		fmt.Fprintf(&summary, "  - Discover Nodes on Start: %v\n", s.DiscoverNodesOnStart)
 		if s.DiscoverNodesInterval != nil {
-			summary.WriteString(fmt.Sprintf("  - Discover Nodes Interval: %d seconds\n", *s.DiscoverNodesInterval))
+			fmt.Fprintf(&summary, "  - Discover Nodes Interval: %d seconds\n", *s.DiscoverNodesInterval)
 		}
 
 		// Show other settings
 		summary.WriteString("\nOther Settings:\n")
-		summary.WriteString(fmt.Sprintf("  - Enable Metrics: %v\n", s.EnableMetrics))
-		summary.WriteString(fmt.Sprintf("  - Enable Debug Logger: %v\n", s.EnableDebugLogger))
-		summary.WriteString(fmt.Sprintf("  - Enable Compatibility Mode: %v\n", s.EnableCompatibilityMode))
-		summary.WriteString(fmt.Sprintf("  - Compress Request Body: %v\n", s.CompressRequestBody))
-		summary.WriteString(fmt.Sprintf("  - Disable Meta Header: %v\n", s.DisableMetaHeader))
+		fmt.Fprintf(&summary, "  - Enable Metrics: %v\n", s.EnableMetrics)
+		fmt.Fprintf(&summary, "  - Enable Debug Logger: %v\n", s.EnableDebugLogger)
+		fmt.Fprintf(&summary, "  - Enable Compatibility Mode: %v\n", s.EnableCompatibilityMode)
+		fmt.Fprintf(&summary, "  - Compress Request Body: %v\n", s.CompressRequestBody)
+		fmt.Fprintf(&summary, "  - Disable Meta Header: %v\n", s.DisableMetaHeader)
 	}
 
 	result := summary.String()
